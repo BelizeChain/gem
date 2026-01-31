@@ -1,0 +1,196 @@
+name: Security Audits
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run weekly on Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+jobs:
+  cargo-audit:
+    name: Cargo Audit (Rust Dependencies)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run cargo audit
+        run: cargo audit --json > cargo-audit.json || true
+
+      - name: Display results
+        run: |
+          if [ -f cargo-audit.json ]; then
+            cat cargo-audit.json
+            # Check if vulnerabilities found
+            VULN_COUNT=$(jq '.vulnerabilities.count // 0' cargo-audit.json)
+            echo "Vulnerabilities found: $VULN_COUNT"
+            if [ "$VULN_COUNT" -gt 0 ]; then
+              echo "⚠️ Security vulnerabilities detected!"
+              exit 1
+            fi
+          fi
+
+      - name: Upload audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-audit-results
+          path: cargo-audit.json
+          retention-days: 30
+
+  npm-audit:
+    name: npm Audit (SDK Dependencies)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./sdk
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: |
+          npm audit --json > npm-audit.json || true
+          npm audit || echo "npm audit completed with warnings"
+
+      - name: Display results
+        run: |
+          if [ -f npm-audit.json ]; then
+            cat npm-audit.json
+            # Check severity
+            HIGH_VULN=$(jq '.metadata.vulnerabilities.high // 0' npm-audit.json)
+            CRITICAL_VULN=$(jq '.metadata.vulnerabilities.critical // 0' npm-audit.json)
+            echo "High vulnerabilities: $HIGH_VULN"
+            echo "Critical vulnerabilities: $CRITICAL_VULN"
+            if [ "$CRITICAL_VULN" -gt 0 ]; then
+              echo "⚠️ Critical vulnerabilities detected!"
+              exit 1
+            fi
+          fi
+
+      - name: Upload npm audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-results
+          path: sdk/npm-audit.json
+          retention-days: 30
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      matrix:
+        language: [ 'rust', 'javascript' ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-3.0, AGPL-3.0
+
+  contract-security:
+    name: Smart Contract Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check for unsafe code
+        run: |
+          echo "Checking for unsafe Rust code in contracts..."
+          UNSAFE_COUNT=$(grep -r "unsafe" --include="*.rs" . | wc -l || echo "0")
+          echo "Found $UNSAFE_COUNT instances of 'unsafe' keyword"
+          if [ "$UNSAFE_COUNT" -gt 0 ]; then
+            echo "⚠️ Warning: Unsafe code detected in contracts"
+            grep -rn "unsafe" --include="*.rs" . || true
+          fi
+
+      - name: Check for panics
+        run: |
+          echo "Checking for panic! calls in contracts..."
+          PANIC_COUNT=$(grep -r "panic!" --include="*.rs" . | grep -v "test" | wc -l || echo "0")
+          echo "Found $PANIC_COUNT instances of 'panic!' in production code"
+          if [ "$PANIC_COUNT" -gt 0 ]; then
+            echo "⚠️ Warning: panic! calls found (should use Result types)"
+            grep -rn "panic!" --include="*.rs" . | grep -v "test" || true
+          fi
+
+      - name: Check for unwrap()
+        run: |
+          echo "Checking for .unwrap() calls in contracts..."
+          UNWRAP_COUNT=$(grep -r "\.unwrap()" --include="*.rs" . | grep -v "test" | wc -l || echo "0")
+          echo "Found $UNWRAP_COUNT instances of '.unwrap()' in production code"
+          if [ "$UNWRAP_COUNT" -gt 0 ]; then
+            echo "⚠️ Warning: .unwrap() calls found (should handle errors properly)"
+            grep -rn "\.unwrap()" --include="*.rs" . | grep -v "test" || true
+          fi
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [cargo-audit, npm-audit, codeql, contract-security]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "# 🔒 Security Audit Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Cargo Audit | ${{ needs.cargo-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| npm Audit | ${{ needs.npm-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CodeQL | ${{ needs.codeql.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Contract Security | ${{ needs.contract-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Recommendation**: Review all failed checks before merging." >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,25 @@
+[package]
+name = "beli_nft"
+version = "0.1.0"
+authors = ["BelizeChain Core Team <dev@belizechain.org>"]
+edition = "2021"
+
+# Declare workspace to prevent parent workspace detection
+[workspace]
+
+[dependencies]
+ink = { version = "5.1.1", default-features = false }
+
+[dev-dependencies]
+ink_e2e = { version = "5.1.1" }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+]
+ink-as-dependency = []
+e2e-tests = []

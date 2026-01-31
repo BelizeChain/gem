@@ -1,0 +1,207 @@
+name: Smart Contracts CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '**.rs'
+      - '**.toml'
+      - '.github/workflows/contracts.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '**.rs'
+      - '**.toml'
+  workflow_dispatch:
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Check Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-index-
+
+      - name: Cache target directory
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-target-
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy analysis
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  build:
+    name: Build Contracts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        contract:
+          - dalla_token
+          - beli_nft
+          - simple_dao
+          - faucet
+          - hello-belizechain
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install cargo-contract
+        run: |
+          cargo install --force --locked cargo-contract --version ^4
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache target directory
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.contract }}/target
+          key: ${{ runner.os }}-${{ matrix.contract }}-${{ hashFiles(format('{0}/Cargo.lock', matrix.contract)) }}
+
+      - name: Build ${{ matrix.contract }} (debug)
+        run: |
+          cd ${{ matrix.contract }}
+          cargo contract build
+
+      - name: Build ${{ matrix.contract }} (release)
+        run: |
+          cd ${{ matrix.contract }}
+          cargo contract build --release
+
+      - name: Check contract size
+        run: |
+          CONTRACT_SIZE=$(wc -c < ${{ matrix.contract }}/target/ink/${{ matrix.contract }}.wasm)
+          echo "Contract size: $CONTRACT_SIZE bytes"
+          if [ $CONTRACT_SIZE -gt 131072 ]; then
+            echo "⚠️ Warning: Contract exceeds 128 KB ($CONTRACT_SIZE bytes)"
+          else
+            echo "✅ Contract size OK ($CONTRACT_SIZE bytes)"
+          fi
+
+      - name: Upload contract artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.contract }}-artifacts
+          path: |
+            ${{ matrix.contract }}/target/ink/${{ matrix.contract }}.wasm
+            ${{ matrix.contract }}/target/ink/${{ matrix.contract }}.contract
+            ${{ matrix.contract }}/target/ink/metadata.json
+          retention-days: 7
+
+  test:
+    name: Test Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run unit tests
+        run: cargo test --workspace --all-features
+
+      - name: Run doc tests
+        run: cargo test --workspace --doc
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Download contract artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          ls -lR artifacts/
+
+      - name: Run integration tests
+        run: |
+          echo "ℹ️ Integration tests require BelizeChain node (not yet implemented)"
+          echo "TODO: Start substrate-contracts-node or BelizeChain devnet"
+          echo "TODO: Deploy contracts and run end-to-end tests"
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Generate coverage
+        run: cargo tarpaulin --workspace --out Xml --timeout 300
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./cobertura.xml
+          flags: contracts
+          name: gem-contracts
+          fail_ci_if_error: false

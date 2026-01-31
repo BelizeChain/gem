@@ -1,0 +1,39 @@
+# Compiled files
+**/target/
+*.wasm
+*.contract
+*.json
+
+# Build artifacts
+**/Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Testing
+coverage/
+*.profraw
+
+# Temporary files
+*.tmp
+.cache/
+
+# Environment
+.env
+.env.local
+.env.*.local

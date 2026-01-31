@@ -1,0 +1,52 @@
+# Rust build artifacts
+target/
+**/target/
+
+# Node.js dependencies
+node_modules/
+**/node_modules/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Git
+.git/
+.github/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Test coverage
+coverage/
+.coverage
+
+# Examples and templates
+examples/
+templates/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Lock files (keep Cargo.lock for reproducibility, exclude package-lock)
+package-lock.json
+yarn.lock
+
+# CI/CD
+.github/workflows/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.log

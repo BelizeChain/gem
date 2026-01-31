@@ -1,0 +1,67 @@
+# Exclude from npm package (@belizechain/gem-sdk)
+
+# Source contracts (not needed in SDK package)
+dalla_token/
+beli_nft/
+simple_dao/
+faucet/
+hello-belizechain/
+
+# Build artifacts
+target/
+*.wasm
+*.contract
+*.json.gz
+
+# Templates (include separately if needed)
+templates/
+
+# CLI tool (publish separately if needed)
+cli/
+
+# Documentation (include only README)
+docs/
+CHANGELOG.md
+CONTRIBUTING.md
+LICENSE
+QUICK_REFERENCE.md
+TUTORIAL.md
+EXTRACTION_READINESS.md
+
+# Development files
+.env
+.env.example
+.editorconfig
+.dockerignore
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+
+# Tests
+tests/
+*.test.js
+*.spec.ts
+
+# Examples (users can find on GitHub)
+examples/
+
+# Node modules
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Coverage
+coverage/
+.nyc_output/
