@@ -98,7 +98,7 @@ jobs:
 
       - name: Install cargo-contract
         run: |
-          cargo install --force --locked cargo-contract --version 4.1.1
+          cargo install --force --locked cargo-contract
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -210,36 +210,36 @@ jobs:
           echo "TODO: Start substrate-contracts-node or BelizeChain devnet"
           echo "TODO: Deploy contracts and run end-to-end tests"
 
-  coverage:
-    name: Code Coverage
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        contract:
-          - dalla_token
-          - beli_nft
-          - simple_dao
-          - faucet
-          - hello-belizechain
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install tarpaulin
-        run: cargo install cargo-tarpaulin
-
-      - name: Generate coverage for ${{ matrix.contract }}
-        run: |
-          cd ${{ matrix.contract }}
-          cargo tarpaulin --out Xml --timeout 300 --output-dir ../
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./cobertura.xml
-          flags: ${{ matrix.contract }}
-          name: gem-${{ matrix.contract }}
-          fail_ci_if_error: false
+  # coverage:
+  #   name: Code Coverage
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       contract:
+  #         - dalla_token
+  #         - beli_nft
+  #         - simple_dao
+  #         - faucet
+  #         - hello-belizechain
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Setup Rust toolchain
+  #       uses: dtolnay/rust-toolchain@stable
+  #
+  #     - name: Install tarpaulin
+  #       run: cargo install cargo-tarpaulin
+  #
+  #     - name: Generate coverage for ${{ matrix.contract }}
+  #       run: |
+  #         cd ${{ matrix.contract }}
+  #         cargo tarpaulin --out Xml --timeout 300 --output-dir ../
+  #
+  #     - name: Upload coverage to Codecov
+  #       uses: codecov/codecov-action@v4
+  #       with:
+  #         files: ./cobertura.xml
+  #         flags: ${{ matrix.contract }}
+  #         name: gem-${{ matrix.contract }}
+  #         fail_ci_if_error: false
