@@ -8,6 +8,9 @@
 !sdk/package.json
 !sdk/package-lock.json
 !sdk/contracts/*.json
+!sdk/.eslintrc.json
+!sdk/.prettierrc.json
+!sdk/tsconfig.json
 
 # Build artifacts
 **/Cargo.lock

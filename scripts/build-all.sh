@@ -51,6 +51,9 @@ declare -a CONTRACTS=(
     "Faucet:faucet"
     "Access Control:access_control"
     "PSP37 Multi-Token:psp37_multi_token"
+    "BelizeX Factory:dex/factory"
+    "BelizeX Pair:dex/pair"
+    "BelizeX Router:dex/router"
 )
 
 # Track success/failure

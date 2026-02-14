@@ -32,12 +32,15 @@ jobs:
           - hello-belizechain
           - access_control
           - psp37_multi_token
+          - dex/factory
+          - dex/pair
+          - dex/router
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.81.0
+        uses: dtolnay/rust-toolchain@1.90.0
         with:
           targets: wasm32-unknown-unknown
           components: rustfmt, clippy
@@ -87,12 +90,17 @@ jobs:
           - simple_dao
           - faucet
           - hello-belizechain
+          - access_control
+          - psp37_multi_token
+          - dex/factory
+          - dex/pair
+          - dex/router
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.81.0
+        uses: dtolnay/rust-toolchain@1.90.0
         with:
           targets: wasm32-unknown-unknown
 
@@ -132,7 +140,11 @@ jobs:
 
       - name: Check contract size
         run: |
-          CONTRACT_SIZE=$(wc -c < ${{ matrix.contract }}/target/ink/${{ matrix.contract }}.wasm)
+          # cargo-contract uses underscores in output filenames (matching Cargo package name)
+          # For nested paths like dex/factory, extract just the directory name
+          CONTRACT_DIR=$(basename "${{ matrix.contract }}")
+          CONTRACT_NAME=$(echo "${CONTRACT_DIR}" | tr '-' '_')
+          CONTRACT_SIZE=$(wc -c < ${{ matrix.contract }}/target/ink/${CONTRACT_NAME}.wasm)
           echo "Contract size: $CONTRACT_SIZE bytes"
           if [ $CONTRACT_SIZE -gt 131072 ]; then
             echo "⚠️ Warning: Contract exceeds 128 KB ($CONTRACT_SIZE bytes)"
@@ -140,13 +152,20 @@ jobs:
             echo "✅ Contract size OK ($CONTRACT_SIZE bytes)"
           fi
 
+      - name: Set artifact name
+        id: artifact-name
+        run: |
+          # Replace / with - for valid artifact names (e.g., dex/factory -> dex-factory)
+          ARTIFACT_NAME=$(echo "${{ matrix.contract }}" | tr '/' '-')
+          echo "name=${ARTIFACT_NAME}-artifacts" >> $GITHUB_OUTPUT
+
       - name: Upload contract artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.contract }}-artifacts
+          name: ${{ steps.artifact-name.outputs.name }}
           path: |
-            ${{ matrix.contract }}/target/ink/${{ matrix.contract }}.wasm
-            ${{ matrix.contract }}/target/ink/${{ matrix.contract }}.contract
+            ${{ matrix.contract }}/target/ink/*.wasm
+            ${{ matrix.contract }}/target/ink/*.contract
             ${{ matrix.contract }}/target/ink/metadata.json
           retention-days: 7
 
@@ -163,12 +182,15 @@ jobs:
           - hello-belizechain
           - access_control
           - psp37_multi_token
+          - dex/factory
+          - dex/pair
+          - dex/router
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.81.0
+        uses: dtolnay/rust-toolchain@1.90.0
         with:
           targets: wasm32-unknown-unknown
 
@@ -200,7 +222,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.81.0
+        uses: dtolnay/rust-toolchain@1.90.0
 
       - name: Download contract artifacts
         uses: actions/download-artifact@v4

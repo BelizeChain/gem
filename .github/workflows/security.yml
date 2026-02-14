@@ -31,7 +31,7 @@ jobs:
         continue-on-error: true
         run: |
           # Audit each contract separately since we have a workspace
-          for dir in dalla_token beli_nft simple_dao faucet access_control psp37_multi_token; do
+          for dir in dalla_token beli_nft simple_dao faucet access_control psp37_multi_token hello-belizechain dex; do
             echo "Auditing $dir..."
             (cd $dir && cargo audit --json >> ../cargo-audit.json) || echo "Audit failed for $dir"
           done

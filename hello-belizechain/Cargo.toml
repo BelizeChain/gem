@@ -8,7 +8,10 @@ edition = "2021"
 [workspace]
 
 [dependencies]
-ink = { version = "5.0", default-features = false }
+ink = { version = "5.1.1", default-features = false }
+
+[dev-dependencies]
+ink_e2e = { version = "5.1.1" }
 
 [lib]
 path = "lib.rs"
@@ -19,3 +22,4 @@ std = [
     "ink/std",
 ]
 ink-as-dependency = []
+e2e-tests = []
