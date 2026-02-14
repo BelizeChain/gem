@@ -16,7 +16,7 @@
 ✅ **Testnet faucet** - Automated token distribution  
 ✅ **Contract ABIs included** - No manual ABI management  
 ✅ **Mesh Network** - LoRa mesh node integration (v1.1.0+)  
-✅ **Privacy SDK** - Commitment hashes for private data (v1.1.0+)  
+✅ **Privacy SDK** - Commitment hashes for private data (v1.1.0+)
 
 ---
 
@@ -56,10 +56,10 @@ const alice = sdk.getAccount('//Alice');
 
 // Transfer 100 DALLA
 await sdk.dallaTransfer(
-    '5GD4w5...NVsNB',  // DALLA contract address
-    alice,              // Sender
-    '5FHneW...JM694ty', // Recipient
-    100000000000000     // Amount (100 DALLA with 12 decimals)
+  '5GD4w5...NVsNB', // DALLA contract address
+  alice, // Sender
+  '5FHneW...JM694ty', // Recipient
+  100000000000000 // Amount (100 DALLA with 12 decimals)
 );
 ```
 
@@ -70,10 +70,10 @@ const alice = sdk.getAccount('//Alice');
 
 // Mint NFT with IPFS URI
 await sdk.nftMint(
-    '5Ho6Ks...iFQL7',           // BeliNFT contract address
-    alice,                       // Minter (owner)
-    '5FHneW...JM694ty',          // Recipient
-    'ipfs://QmYourImageHash'     // Token URI
+  '5Ho6Ks...iFQL7', // BeliNFT contract address
+  alice, // Minter (owner)
+  '5FHneW...JM694ty', // Recipient
+  'ipfs://QmYourImageHash' // Token URI
 );
 ```
 
@@ -84,9 +84,9 @@ const alice = sdk.getAccount('//Alice');
 
 // Create proposal
 const proposalId = await sdk.daoCreateProposal(
-    '5ExampleDAOAddress',
-    alice,
-    'Increase treasury allocation for infrastructure'
+  '5ExampleDAOAddress',
+  alice,
+  'Increase treasury allocation for infrastructure'
 );
 
 console.log(`Proposal created: #${proposalId}`);
@@ -98,14 +98,11 @@ console.log(`Proposal created: #${proposalId}`);
 const bob = sdk.getAccount('//Bob');
 
 // Check if can claim
-const canClaim = await sdk.faucetCanClaim(
-    '5FaucetAddress',
-    bob.address
-);
+const canClaim = await sdk.faucetCanClaim('5FaucetAddress', bob.address);
 
 if (canClaim) {
-    // Claim 1000 DALLA
-    await sdk.faucetClaim('5FaucetAddress', bob);
+  // Claim 1000 DALLA
+  await sdk.faucetClaim('5FaucetAddress', bob);
 }
 ```
 
@@ -122,6 +119,7 @@ new GemSDK(nodeUrl?: string)
 Create a new SDK instance.
 
 **Parameters:**
+
 - `nodeUrl` (optional): WebSocket URL (default: `ws://localhost:9944`)
 
 ---
@@ -162,6 +160,7 @@ const bob = sdk.getAccount('//Bob');
 ```
 
 **Parameters:**
+
 - `uri`: Account URI, seed phrase, or private key
 
 **Returns:** `KeyringPair`
@@ -189,10 +188,10 @@ Transfer DALLA tokens.
 
 ```javascript
 await sdk.dallaTransfer(
-    '5GD4w5...NVsNB',
-    alice,
-    bob.address,
-    1000000000000  // 1 DALLA
+  '5GD4w5...NVsNB',
+  alice,
+  bob.address,
+  1000000000000 // 1 DALLA
 );
 ```
 
@@ -203,10 +202,7 @@ await sdk.dallaTransfer(
 Get token balance.
 
 ```javascript
-const balance = await sdk.dallaBalanceOf(
-    '5GD4w5...NVsNB',
-    alice.address
-);
+const balance = await sdk.dallaBalanceOf('5GD4w5...NVsNB', alice.address);
 ```
 
 ---
@@ -232,12 +228,7 @@ console.log('Total Supply:', metadata.totalSupply);
 Mint new NFT.
 
 ```javascript
-await sdk.nftMint(
-    '5Ho6Ks...iFQL7',
-    alice,
-    bob.address,
-    'ipfs://Qm...'
-);
+await sdk.nftMint('5Ho6Ks...iFQL7', alice, bob.address, 'ipfs://Qm...');
 ```
 
 ---
@@ -270,11 +261,7 @@ console.log('IPFS URI:', uri);
 Create DAO proposal.
 
 ```javascript
-const proposalId = await sdk.daoCreateProposal(
-    '5DAOAddress',
-    alice,
-    'Proposal description'
-);
+const proposalId = await sdk.daoCreateProposal('5DAOAddress', alice, 'Proposal description');
 ```
 
 ---
@@ -285,10 +272,10 @@ Vote on proposal.
 
 ```javascript
 await sdk.daoVote(
-    '5DAOAddress',
-    alice,
-    0,      // Proposal ID
-    true    // true = for, false = against
+  '5DAOAddress',
+  alice,
+  0, // Proposal ID
+  true // true = for, false = against
 );
 ```
 
@@ -325,10 +312,7 @@ await sdk.faucetClaim('5FaucetAddress', bob);
 Check if account can claim.
 
 ```javascript
-const canClaim = await sdk.faucetCanClaim(
-    '5FaucetAddress',
-    bob.address
-);
+const canClaim = await sdk.faucetCanClaim('5FaucetAddress', bob.address);
 ```
 
 ---
@@ -353,51 +337,46 @@ console.log('Cooldown:', stats.cooldown);
 const { GemSDK } = require('@belizechain/gem-sdk');
 
 async function main() {
-    // 1. Connect
-    const sdk = new GemSDK('ws://localhost:9944');
-    await sdk.connect();
+  // 1. Connect
+  const sdk = new GemSDK('ws://localhost:9944');
+  await sdk.connect();
 
-    // 2. Get accounts
-    const alice = sdk.getAccount('//Alice');
-    const bob = sdk.getAccount('//Bob');
+  // 2. Get accounts
+  const alice = sdk.getAccount('//Alice');
+  const bob = sdk.getAccount('//Bob');
 
-    // 3. Check balances
-    const aliceBalance = await sdk.getBalance(alice.address);
-    console.log('Alice balance:', aliceBalance.free);
+  // 3. Check balances
+  const aliceBalance = await sdk.getBalance(alice.address);
+  console.log('Alice balance:', aliceBalance.free);
 
-    // 4. Transfer DALLA tokens
-    await sdk.dallaTransfer(
-        '5GD4w5...NVsNB',
-        alice,
-        bob.address,
-        1000000000000000  // 1000 DALLA
-    );
+  // 4. Transfer DALLA tokens
+  await sdk.dallaTransfer(
+    '5GD4w5...NVsNB',
+    alice,
+    bob.address,
+    1000000000000000 // 1000 DALLA
+  );
 
-    // 5. Mint NFT
-    await sdk.nftMint(
-        '5Ho6Ks...iFQL7',
-        alice,
-        bob.address,
-        'ipfs://QmYourHash'
-    );
+  // 5. Mint NFT
+  await sdk.nftMint('5Ho6Ks...iFQL7', alice, bob.address, 'ipfs://QmYourHash');
 
-    // 6. Create DAO proposal
-    const proposalId = await sdk.daoCreateProposal(
-        '5DAOAddress',
-        alice,
-        'Increase developer funding'
-    );
+  // 6. Create DAO proposal
+  const proposalId = await sdk.daoCreateProposal(
+    '5DAOAddress',
+    alice,
+    'Increase developer funding'
+  );
 
-    // 7. Vote on proposal
-    await sdk.daoVote(
-        '5DAOAddress',
-        alice,
-        proposalId,
-        true  // Vote for
-    );
+  // 7. Vote on proposal
+  await sdk.daoVote(
+    '5DAOAddress',
+    alice,
+    proposalId,
+    true // Vote for
+  );
 
-    // 8. Disconnect
-    await sdk.disconnect();
+  // 8. Disconnect
+  await sdk.disconnect();
 }
 
 main().catch(console.error);
@@ -415,10 +394,7 @@ import { GemSDK } from '@belizechain/gem-sdk';
 const sdk: GemSDK = new GemSDK('ws://localhost:9944');
 await sdk.connect();
 
-const balance: string = await sdk.dallaBalanceOf(
-    '5GD4w5...NVsNB',
-    alice.address
-);
+const balance: string = await sdk.dallaBalanceOf('5GD4w5...NVsNB', alice.address);
 ```
 
 ---
@@ -427,12 +403,12 @@ const balance: string = await sdk.dallaBalanceOf(
 
 **BelizeChain Testnet:**
 
-| Contract | Address |
-|----------|---------|
-| DALLA Token | `5GD4w5DP6VUBtFt7F9LB9EDzGcpbzFwvR9CWVNVsNB` |
-| BeliNFT | `5Ho6KsLW7F8vBUWg3uz97sTu6iwxr665ucLtFzn2i8riFQL7` |
-| Simple DAO | *Awaiting deployment* |
-| Faucet | *Awaiting deployment* |
+| Contract    | Address                                            |
+| ----------- | -------------------------------------------------- |
+| DALLA Token | `5GD4w5DP6VUBtFt7F9LB9EDzGcpbzFwvR9CWVNVsNB`       |
+| BeliNFT     | `5Ho6KsLW7F8vBUWg3uz97sTu6iwxr665ucLtFzn2i8riFQL7` |
+| Simple DAO  | _Awaiting deployment_                              |
+| Faucet      | _Awaiting deployment_                              |
 
 ---
 

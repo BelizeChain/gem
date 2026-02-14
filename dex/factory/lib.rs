@@ -14,20 +14,20 @@ pub mod factory {
     pub struct Factory {
         // Fee recipient address (receives 1/6 of trading fees)
         fee_to: Option<AccountId>,
-        
+
         // Fee setter (can change fee_to)
         fee_to_setter: AccountId,
-        
+
         // All created pairs: index => pair_address
         all_pairs: Mapping<u32, AccountId>,
-        
+
         // Pair addresses by tokens: (token0, token1) => pair_address
         // Note: token0 < token1 (lexicographically sorted)
         get_pair: Mapping<(AccountId, AccountId), AccountId>,
-        
+
         // Total number of pairs created
         all_pairs_length: u32,
-        
+
         // Pair contract code hash (for instantiation)
         pair_code_hash: Hash,
     }
@@ -115,7 +115,11 @@ pub mod factory {
 
         /// Get pair address for two tokens
         #[ink(message)]
-        pub fn get_pair_address(&self, token_a: AccountId, token_b: AccountId) -> Option<AccountId> {
+        pub fn get_pair_address(
+            &self,
+            token_a: AccountId,
+            token_b: AccountId,
+        ) -> Option<AccountId> {
             let (token0, token1) = Self::sort_tokens(token_a, token_b).ok()?;
             self.get_pair.get((token0, token1))
         }
@@ -280,7 +284,7 @@ pub mod factory {
         /// NOTE: This is a simplified version. Production implementation would use:
         /// ```ignore
         /// use ink::env::call::{build_create, ExecutionInput, Selector};
-        /// 
+        ///
         /// let pair = build_create::<Pair>()
         ///     .code_hash(self.pair_code_hash)
         ///     .gas_limit(0)
@@ -293,22 +297,18 @@ pub mod factory {
         ///     .returns::<AccountId>()
         ///     .instantiate();
         /// ```
-        fn _create_pair_contract(
-            &self,
-            token0: AccountId,
-            token1: AccountId,
-        ) -> Result<AccountId> {
+        fn _create_pair_contract(&self, token0: AccountId, token1: AccountId) -> Result<AccountId> {
             // TODO: Implement actual contract instantiation
             // For now, generate a deterministic address from token addresses
             let mut data = Vec::new();
             data.extend_from_slice(token0.as_ref());
             data.extend_from_slice(token1.as_ref());
-            
+
             // Generate deterministic address (simplified)
             let mut pair_bytes = [0u8; 32];
             pair_bytes[0..16].copy_from_slice(&data[0..16]);
             pair_bytes[16..32].copy_from_slice(&data[16..32]);
-            
+
             Ok(AccountId::from(pair_bytes))
         }
     }
@@ -330,9 +330,9 @@ pub mod factory {
         fn new_works() {
             let (setter, _, _) = get_test_accounts();
             let code_hash = Hash::from([0x42; 32]);
-            
+
             let factory = Factory::new(setter, code_hash);
-            
+
             assert_eq!(factory.fee_to_setter(), setter);
             assert_eq!(factory.fee_to(), None);
             assert_eq!(factory.all_pairs_length(), 0);
@@ -342,12 +342,12 @@ pub mod factory {
         fn create_pair_works() {
             let (setter, token_a, token_b) = get_test_accounts();
             let code_hash = Hash::from([0x42; 32]);
-            
+
             let mut factory = Factory::new(setter, code_hash);
-            
+
             // Create pair
             let pair = factory.create_pair(token_a, token_b).unwrap();
-            
+
             // Verify pair created
             assert_eq!(factory.all_pairs_length(), 1);
             assert_eq!(factory.get_pair_address(token_a, token_b), Some(pair));
@@ -359,9 +359,9 @@ pub mod factory {
         fn create_pair_fails_identical_addresses() {
             let (setter, token_a, _) = get_test_accounts();
             let code_hash = Hash::from([0x42; 32]);
-            
+
             let mut factory = Factory::new(setter, code_hash);
-            
+
             assert_eq!(
                 factory.create_pair(token_a, token_a),
                 Err(Error::IdenticalAddresses)
@@ -373,9 +373,9 @@ pub mod factory {
             let (setter, token_a, _) = get_test_accounts();
             let code_hash = Hash::from([0x42; 32]);
             let zero_address = AccountId::from([0u8; 32]);
-            
+
             let mut factory = Factory::new(setter, code_hash);
-            
+
             assert_eq!(
                 factory.create_pair(token_a, zero_address),
                 Err(Error::ZeroAddress)
@@ -386,18 +386,18 @@ pub mod factory {
         fn create_pair_fails_if_exists() {
             let (setter, token_a, token_b) = get_test_accounts();
             let code_hash = Hash::from([0x42; 32]);
-            
+
             let mut factory = Factory::new(setter, code_hash);
-            
+
             // Create first pair
             factory.create_pair(token_a, token_b).unwrap();
-            
+
             // Try to create again
             assert_eq!(
                 factory.create_pair(token_a, token_b),
                 Err(Error::PairExists)
             );
-            
+
             // Try reversed order
             assert_eq!(
                 factory.create_pair(token_b, token_a),
@@ -409,13 +409,13 @@ pub mod factory {
         fn set_fee_to_works() {
             let (setter, new_fee_to, _) = get_test_accounts();
             let code_hash = Hash::from([0x42; 32]);
-            
+
             let mut factory = Factory::new(setter, code_hash);
-            
+
             // Set fee_to
             factory.set_fee_to(Some(new_fee_to)).unwrap();
             assert_eq!(factory.fee_to(), Some(new_fee_to));
-            
+
             // Clear fee_to
             factory.set_fee_to(None).unwrap();
             assert_eq!(factory.fee_to(), None);
@@ -425,25 +425,22 @@ pub mod factory {
         fn set_fee_to_fails_not_authorized() {
             let (setter, _, other) = get_test_accounts();
             let code_hash = Hash::from([0x42; 32]);
-            
+
             let mut factory = Factory::new(setter, code_hash);
-            
+
             // Change caller to non-setter
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(other);
-            
-            assert_eq!(
-                factory.set_fee_to(Some(other)),
-                Err(Error::NotAuthorized)
-            );
+
+            assert_eq!(factory.set_fee_to(Some(other)), Err(Error::NotAuthorized));
         }
 
         #[ink::test]
         fn set_fee_to_setter_works() {
             let (setter, new_setter, _) = get_test_accounts();
             let code_hash = Hash::from([0x42; 32]);
-            
+
             let mut factory = Factory::new(setter, code_hash);
-            
+
             factory.set_fee_to_setter(new_setter).unwrap();
             assert_eq!(factory.fee_to_setter(), new_setter);
         }

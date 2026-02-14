@@ -23,6 +23,7 @@ jobs:
     name: Check Contracts
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         contract:
           - dalla_token
@@ -83,6 +84,7 @@ jobs:
     name: Build Contracts
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         contract:
           - dalla_token
@@ -173,6 +175,7 @@ jobs:
     name: Test Contracts
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         contract:
           - dalla_token

@@ -14,7 +14,7 @@ pub mod router {
     pub struct Router {
         // Factory contract address
         factory: AccountId,
-        
+
         // Wrapped native token address (WBZC)
         wbzc: AccountId,
     }
@@ -130,7 +130,12 @@ pub mod router {
         ///
         /// Maintains current price ratio.
         #[ink(message)]
-        pub fn quote(&self, amount_a: Balance, reserve_a: Balance, reserve_b: Balance) -> Result<Balance> {
+        pub fn quote(
+            &self,
+            amount_a: Balance,
+            reserve_a: Balance,
+            reserve_b: Balance,
+        ) -> Result<Balance> {
             if amount_a == 0 {
                 return Err(Error::ZeroAmount);
             }
@@ -163,9 +168,7 @@ pub mod router {
             }
 
             // 0.3% fee: amount_in * 997 / 1000
-            let amount_in_with_fee = amount_in
-                .checked_mul(997)
-                .ok_or(Error::ArithmeticError)?;
+            let amount_in_with_fee = amount_in.checked_mul(997).ok_or(Error::ArithmeticError)?;
 
             let numerator = amount_in_with_fee
                 .checked_mul(reserve_out)
@@ -218,7 +221,11 @@ pub mod router {
         /// Example: path = [DALLA, BZC, USDT]
         /// Returns: [100 DALLA in, 200 BZC mid, 50 USDT out]
         #[ink(message)]
-        pub fn get_amounts_out(&self, amount_in: Balance, path: Vec<AccountId>) -> Result<Vec<Balance>> {
+        pub fn get_amounts_out(
+            &self,
+            amount_in: Balance,
+            path: Vec<AccountId>,
+        ) -> Result<Vec<Balance>> {
             if path.len() < 2 {
                 return Err(Error::InvalidPath);
             }
@@ -237,7 +244,11 @@ pub mod router {
 
         /// Calculate input amounts for multi-hop swap
         #[ink(message)]
-        pub fn get_amounts_in(&self, amount_out: Balance, path: Vec<AccountId>) -> Result<Vec<Balance>> {
+        pub fn get_amounts_in(
+            &self,
+            amount_out: Balance,
+            path: Vec<AccountId>,
+        ) -> Result<Vec<Balance>> {
             if path.len() < 2 {
                 return Err(Error::InvalidPath);
             }
@@ -494,14 +505,14 @@ pub mod router {
         ) -> Result<()> {
             // PSP22::transfer_from selector is 0x54b3c76e
             let selector = [0x54, 0xb3, 0xc7, 0x6e];
-            
+
             let result = build_call::<Environment>()
                 .call(token)
                 .exec_input(
                     ExecutionInput::new(Selector::new(selector))
                         .push_arg(from)
                         .push_arg(to)
-                        .push_arg(amount)
+                        .push_arg(amount),
                 )
                 .returns::<core::result::Result<(), ink::prelude::vec::Vec<u8>>>()
                 .try_invoke();
@@ -514,15 +525,12 @@ pub mod router {
 
         /// Get token balance via PSP22 cross-contract call
         fn _token_balance_of(&self, token: AccountId, account: AccountId) -> Balance {
-            // PSP22::balance_of selector is 0x65682523  
+            // PSP22::balance_of selector is 0x65682523
             let selector = [0x65, 0x68, 0x25, 0x23];
-            
+
             let result = build_call::<Environment>()
                 .call(token)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(selector))
-                        .push_arg(account)
-                )
+                .exec_input(ExecutionInput::new(Selector::new(selector)).push_arg(account))
                 .returns::<Balance>()
                 .try_invoke();
 
@@ -569,7 +577,7 @@ pub mod router {
                 .exec_input(
                     ExecutionInput::new(Selector::new(selector))
                         .push_arg(token_a)
-                        .push_arg(token_b)
+                        .push_arg(token_b),
                 )
                 .returns::<Option<AccountId>>()
                 .try_invoke();
@@ -581,7 +589,11 @@ pub mod router {
         }
 
         /// Get reserves for two tokens
-        fn _get_reserves(&self, token_a: AccountId, token_b: AccountId) -> Result<(Balance, Balance)> {
+        fn _get_reserves(
+            &self,
+            token_a: AccountId,
+            token_b: AccountId,
+        ) -> Result<(Balance, Balance)> {
             let (token0, _) = Self::_sort_tokens(token_a, token_b)?;
 
             // TODO: Call pair.get_reserves()
@@ -648,17 +660,17 @@ pub mod router {
         fn _swap(&self, amounts: &[Balance], path: &[AccountId], to: AccountId) -> Result<()> {
             for i in 0..path.len() - 1 {
                 let (input, output) = (path[i], path[i + 1]);
-                
+
                 // Get pair address
                 let pair = self._get_pair(input, output)?;
-                
+
                 // Determine token order in pair (pairs use sorted addresses)
                 let (token0, _token1) = if input < output {
                     (input, output)
                 } else {
                     (output, input)
                 };
-                
+
                 // Calculate output amounts based on token order
                 let amount_out = amounts[i + 1];
                 let (amount0_out, amount1_out) = if input == token0 {
@@ -666,14 +678,14 @@ pub mod router {
                 } else {
                     (amount_out, 0)
                 };
-                
+
                 // Determine recipient: next pair or final destination
                 let recipient = if i < path.len() - 2 {
                     self._get_pair(output, path[i + 2])?
                 } else {
                     to
                 };
-                
+
                 // Call pair.swap(amount0Out, amount1Out, to)
                 let selector = [0x1e, 0x6a, 0xf2, 0x6f]; // swap method
                 let result = build_call::<Environment>()
@@ -682,17 +694,17 @@ pub mod router {
                         ExecutionInput::new(Selector::new(selector))
                             .push_arg(amount0_out)
                             .push_arg(amount1_out)
-                            .push_arg(recipient)
+                            .push_arg(recipient),
                     )
                     .returns::<core::result::Result<(), Vec<u8>>>()
                     .try_invoke();
-                
+
                 match result {
-                    Ok(Ok(_)) => {},
+                    Ok(Ok(_)) => {}
                     _ => return Err(Error::SwapFailed),
                 }
             }
-            
+
             Ok(())
         }
     }

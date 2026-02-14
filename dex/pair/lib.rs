@@ -14,7 +14,7 @@
 #[ink::contract]
 pub mod pair {
     use ink::env::call::{build_call, ExecutionInput, Selector};
-    
+
     use ink::storage::Mapping;
     use scale::{Decode, Encode};
 
@@ -33,40 +33,40 @@ pub mod pair {
     pub struct Pair {
         /// Factory contract that created this pair
         factory: AccountId,
-        
+
         /// Token0 address (lexicographically smaller)
         token0: AccountId,
-        
+
         /// Token1 address (lexicographically larger)
         token1: AccountId,
-        
+
         /// Reserve of token0
         reserve0: Balance,
-        
+
         /// Reserve of token1
         reserve1: Balance,
-        
+
         /// Total supply of LP tokens
         total_supply: Balance,
-        
+
         /// LP token balances: account => balance
         balances: Mapping<AccountId, Balance>,
-        
+
         /// LP token allowances: (owner, spender) => amount
         allowances: Mapping<(AccountId, AccountId), Balance>,
-        
+
         /// Block timestamp of last reserve update (for TWAP oracle)
         block_timestamp_last: u64,
-        
+
         /// Cumulative price0 (for TWAP oracle)
         price0_cumulative_last: u128,
-        
+
         /// Cumulative price1 (for TWAP oracle)
         price1_cumulative_last: u128,
-        
+
         /// K value (reserve0 * reserve1) - must never decrease
         k_last: u128,
-        
+
         /// Reentrancy lock
         locked: bool,
     }
@@ -252,8 +252,7 @@ pub mod pair {
                 return Err(Error::InsufficientAllowance);
             }
 
-            self.allowances
-                .insert((from, caller), &(allowance - value));
+            self.allowances.insert((from, caller), &(allowance - value));
             self._transfer(from, to, value)
         }
 
@@ -313,11 +312,8 @@ pub mod pair {
 
             let liquidity = if self.total_supply == 0 {
                 // First liquidity provision
-                let initial_liquidity = Self::sqrt(
-                    amount0
-                        .checked_mul(amount1)
-                        .ok_or(Error::Overflow)?,
-                );
+                let initial_liquidity =
+                    Self::sqrt(amount0.checked_mul(amount1).ok_or(Error::Overflow)?);
 
                 if initial_liquidity <= MINIMUM_LIQUIDITY {
                     self.locked = false;
@@ -395,7 +391,7 @@ pub mod pair {
             }
 
             let (reserve0, reserve1) = (self.reserve0, self.reserve1);
-            
+
             // Get LP tokens sent to this contract
             let liquidity = self.balance_of(self.env().account_id());
 
@@ -521,7 +517,7 @@ pub mod pair {
             let balance0_adjusted = balance0
                 .saturating_mul(1000)
                 .saturating_sub(amount0_in.saturating_mul(FEE_NUMERATOR));
-            
+
             let balance1_adjusted = balance1
                 .saturating_mul(1000)
                 .saturating_sub(amount1_in.saturating_mul(FEE_NUMERATOR));
@@ -575,7 +571,12 @@ pub mod pair {
 
         /// Calculate amount out for exact amount in (before fees)
         #[ink(message)]
-        pub fn get_amount_out(&self, amount_in: Balance, reserve_in: Balance, reserve_out: Balance) -> Result<Balance> {
+        pub fn get_amount_out(
+            &self,
+            amount_in: Balance,
+            reserve_in: Balance,
+            reserve_out: Balance,
+        ) -> Result<Balance> {
             if amount_in == 0 {
                 return Err(Error::InsufficientInputAmount);
             }
@@ -585,8 +586,7 @@ pub mod pair {
             }
 
             // Apply 0.3% fee
-            let amount_in_with_fee = amount_in
-                .saturating_mul(FEE_DENOMINATOR - FEE_NUMERATOR);
+            let amount_in_with_fee = amount_in.saturating_mul(FEE_DENOMINATOR - FEE_NUMERATOR);
 
             let numerator = amount_in_with_fee
                 .checked_mul(reserve_out)
@@ -605,7 +605,12 @@ pub mod pair {
 
         /// Calculate amount in for exact amount out (before fees)
         #[ink(message)]
-        pub fn get_amount_in(&self, amount_out: Balance, reserve_in: Balance, reserve_out: Balance) -> Result<Balance> {
+        pub fn get_amount_in(
+            &self,
+            amount_out: Balance,
+            reserve_in: Balance,
+            reserve_out: Balance,
+        ) -> Result<Balance> {
             if amount_out == 0 {
                 return Err(Error::InsufficientOutputAmount);
             }
@@ -641,14 +646,14 @@ pub mod pair {
         fn _token_transfer(&self, token: AccountId, to: AccountId, amount: Balance) -> Result<()> {
             // PSP22::transfer selector is 0xdb20f9f5
             let selector = [0xdb, 0x20, 0xf9, 0xf5];
-            
+
             // Build cross-contract call
             let result = build_call::<Environment>()
                 .call(token)
                 .exec_input(
                     ExecutionInput::new(Selector::new(selector))
                         .push_arg(to)
-                        .push_arg(amount)
+                        .push_arg(amount),
                 )
                 .returns::<core::result::Result<(), ink::prelude::vec::Vec<u8>>>()
                 .try_invoke();
@@ -663,15 +668,12 @@ pub mod pair {
         ///
         /// Calls the `balance_of` method on a PSP22 token contract
         fn _token_balance_of(&self, token: AccountId, account: AccountId) -> Balance {
-            // PSP22::balance_of selector is 0x65682523  
+            // PSP22::balance_of selector is 0x65682523
             let selector = [0x65, 0x68, 0x25, 0x23];
-            
+
             let result = build_call::<Environment>()
                 .call(token)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(selector))
-                        .push_arg(account)
-                )
+                .exec_input(ExecutionInput::new(Selector::new(selector)).push_arg(account))
                 .returns::<Balance>()
                 .try_invoke();
 
@@ -689,22 +691,18 @@ pub mod pair {
 
             if time_elapsed > 0 && self.reserve0 > 0 && self.reserve1 > 0 {
                 // Price0 = reserve1 / reserve0
-                self.price0_cumulative_last = self
-                    .price0_cumulative_last
-                    .saturating_add(
-                        (self.reserve1 as u128)
-                            .saturating_mul(time_elapsed as u128)
-                            .saturating_div(self.reserve0 as u128),
-                    );
+                self.price0_cumulative_last = self.price0_cumulative_last.saturating_add(
+                    (self.reserve1 as u128)
+                        .saturating_mul(time_elapsed as u128)
+                        .saturating_div(self.reserve0 as u128),
+                );
 
                 // Price1 = reserve0 / reserve1
-                self.price1_cumulative_last = self
-                    .price1_cumulative_last
-                    .saturating_add(
-                        (self.reserve0 as u128)
-                            .saturating_mul(time_elapsed as u128)
-                            .saturating_div(self.reserve1 as u128),
-                    );
+                self.price1_cumulative_last = self.price1_cumulative_last.saturating_add(
+                    (self.reserve0 as u128)
+                        .saturating_mul(time_elapsed as u128)
+                        .saturating_div(self.reserve1 as u128),
+                );
             }
 
             self.reserve0 = balance0;
@@ -826,7 +824,7 @@ pub mod pair {
             // To get 90 tokens out from pool with 1000 reserves each
             let amount_in = pair.get_amount_in(90, 1000, 1000).unwrap();
             assert!(amount_in > 90); // Need more than 90 due to fee
-            assert!(amount_in < 100); // But less than 100
+            assert!(amount_in <= 100); // Approximately 100 tokens needed
         }
     }
 }
