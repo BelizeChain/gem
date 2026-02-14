@@ -1,17 +1,17 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 /// # Simple DAO - Governance Contract
-/// 
+///
 /// A lightweight DAO (Decentralized Autonomous Organization) for BelizeChain.
 /// Demonstrates cross-contract integration with DALLA token.
-/// 
+///
 /// ## Features
 /// - Proposal creation and voting
 /// - DALLA token-weighted voting
 /// - NFT-based membership verification
 /// - Configurable voting periods
 /// - Proposal execution after quorum
-/// 
+///
 /// ## Use Cases
 /// - Community governance
 /// - Treasury management
@@ -139,7 +139,7 @@ mod simple_dao {
             nft_membership: Option<AccountId>,
         ) -> Self {
             let caller = Self::env().caller();
-            
+
             Self {
                 proposals: Mapping::default(),
                 votes: Mapping::default(),
@@ -158,7 +158,7 @@ mod simple_dao {
         pub fn create_proposal(&mut self, description: String) -> Result<ProposalId> {
             let caller = self.env().caller();
             let current_block = self.env().block_number();
-            
+
             if self.voting_period == 0 {
                 return Err(Error::InvalidVotingPeriod);
             }
@@ -202,7 +202,9 @@ mod simple_dao {
             }
 
             // Get proposal
-            let mut proposal = self.proposals.get(proposal_id)
+            let mut proposal = self
+                .proposals
+                .get(proposal_id)
                 .ok_or(Error::ProposalNotFound)?;
 
             // Check if voting is still active
@@ -237,7 +239,9 @@ mod simple_dao {
         pub fn finalize_proposal(&mut self, proposal_id: ProposalId) -> Result<()> {
             let current_block = self.env().block_number();
 
-            let mut proposal = self.proposals.get(proposal_id)
+            let mut proposal = self
+                .proposals
+                .get(proposal_id)
                 .ok_or(Error::ProposalNotFound)?;
 
             // Check if voting period ended
@@ -247,7 +251,8 @@ mod simple_dao {
 
             // Update status based on votes
             let total_votes = proposal.yes_votes.saturating_add(proposal.no_votes);
-            let quorum_required = self.total_voting_power
+            let quorum_required = self
+                .total_voting_power
                 .saturating_mul(self.quorum_bps as u128)
                 .saturating_div(10000);
 
@@ -265,7 +270,9 @@ mod simple_dao {
         /// Executes a passed proposal
         #[ink(message)]
         pub fn execute_proposal(&mut self, proposal_id: ProposalId) -> Result<()> {
-            let mut proposal = self.proposals.get(proposal_id)
+            let mut proposal = self
+                .proposals
+                .get(proposal_id)
                 .ok_or(Error::ProposalNotFound)?;
 
             if proposal.executed {
@@ -281,9 +288,7 @@ mod simple_dao {
             proposal.status = ProposalStatus::Executed;
             self.proposals.insert(proposal_id, &proposal);
 
-            self.env().emit_event(ProposalExecuted {
-                proposal_id,
-            });
+            self.env().emit_event(ProposalExecuted { proposal_id });
 
             Ok(())
         }
@@ -380,10 +385,11 @@ mod simple_dao {
         }
 
         fn advance_block(blocks: u32) {
-            let current = ink::env::test::get_current_block_number::<ink::env::DefaultEnvironment>()
-                .unwrap_or(1);
+            let current =
+                ink::env::test::get_current_block_number::<ink::env::DefaultEnvironment>()
+                    .unwrap_or(1);
             ink::env::test::set_block_number::<ink::env::DefaultEnvironment>(
-                current.saturating_add(blocks)
+                current.saturating_add(blocks),
             );
         }
 

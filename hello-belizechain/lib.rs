@@ -1,19 +1,19 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 /// # Hello BelizeChain
-/// 
+///
 /// The first Gem smart contract - a simple message storage and counter example.
-/// 
+///
 /// ## Features
 /// - Store a custom welcome message
 /// - Increment a counter
 /// - Query current state
-/// 
+///
 /// ## Usage
 /// ```bash
 /// # Build the contract
 /// cargo contract build
-/// 
+///
 /// # Deploy to local node
 /// cargo contract instantiate \
 ///     --constructor new \
@@ -123,11 +123,9 @@ mod hello_belizechain {
         #[ink(message)]
         pub fn increment(&mut self) -> Result<()> {
             let caller = self.env().caller();
-            
+
             // Increment global counter
-            self.counter = self.counter
-                .checked_add(1)
-                .ok_or(Error::CounterOverflow)?;
+            self.counter = self.counter.checked_add(1).ok_or(Error::CounterOverflow)?;
 
             // Record visitor
             let current_visits = self.visits.get(&caller).unwrap_or(0);
@@ -189,10 +187,7 @@ mod hello_belizechain {
         #[ink::test]
         fn default_works() {
             let contract = HelloBelizeChain::default();
-            assert_eq!(
-                contract.get_message(),
-                "Welcome to BelizeChain 💎"
-            );
+            assert_eq!(contract.get_message(), "Welcome to BelizeChain 💎");
         }
 
         #[ink::test]
@@ -224,10 +219,10 @@ mod hello_belizechain {
         fn visits_tracking_works() {
             let mut contract = HelloBelizeChain::default();
             assert_eq!(contract.my_visits(), 0);
-            
+
             assert!(contract.increment().is_ok());
             assert_eq!(contract.my_visits(), 1);
-            
+
             assert!(contract.increment().is_ok());
             assert_eq!(contract.my_visits(), 2);
         }
@@ -238,7 +233,7 @@ mod hello_belizechain {
             assert!(contract.increment().is_ok());
             assert!(contract.increment().is_ok());
             assert_eq!(contract.get_counter(), 2);
-            
+
             contract.reset();
             assert_eq!(contract.get_counter(), 0);
         }

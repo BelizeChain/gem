@@ -22,6 +22,16 @@ jobs:
   check:
     name: Check Contracts
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        contract:
+          - dalla_token
+          - beli_nft
+          - simple_dao
+          - faucet
+          - hello-belizechain
+          - access_control
+          - psp37_multi_token
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -51,16 +61,20 @@ jobs:
       - name: Cache target directory
         uses: actions/cache@v4
         with:
-          path: target
-          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+          path: ${{ matrix.contract }}/target
+          key: ${{ runner.os }}-${{ matrix.contract }}-check-${{ hashFiles(format('{0}/Cargo.lock', matrix.contract)) }}
           restore-keys: |
-            ${{ runner.os }}-target-
+            ${{ runner.os }}-${{ matrix.contract }}-check-
 
-      - name: Check formatting
-        run: cargo fmt --all -- --check
+      - name: Check formatting for ${{ matrix.contract }}
+        run: |
+          cd ${{ matrix.contract }}
+          cargo fmt --all -- --check
 
-      - name: Clippy analysis
-        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Clippy analysis for ${{ matrix.contract }}
+        run: |
+          cd ${{ matrix.contract }}
+          cargo clippy --all-targets -- -D warnings
 
   build:
     name: Build Contracts
@@ -84,7 +98,7 @@ jobs:
 
       - name: Install cargo-contract
         run: |
-          cargo install --force --locked cargo-contract --version ^4
+          cargo install --force --locked cargo-contract --version 4.1.1
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -131,6 +145,16 @@ jobs:
   test:
     name: Test Contracts
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        contract:
+          - dalla_token
+          - beli_nft
+          - simple_dao
+          - faucet
+          - hello-belizechain
+          - access_control
+          - psp37_multi_token
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -146,14 +170,18 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+            ${{ matrix.contract }}/target
+          key: ${{ runner.os }}-${{ matrix.contract }}-test-${{ hashFiles(format('{0}/Cargo.lock', matrix.contract)) }}
 
-      - name: Run unit tests
-        run: cargo test --workspace --all-features
+      - name: Run unit tests for ${{ matrix.contract }}
+        run: |
+          cd ${{ matrix.contract }}
+          cargo test --all-features
 
-      - name: Run doc tests
-        run: cargo test --workspace --doc
+      - name: Run doc tests for ${{ matrix.contract }}
+        run: |
+          cd ${{ matrix.contract }}
+          cargo test --doc
 
   integration:
     name: Integration Tests
@@ -185,6 +213,14 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        contract:
+          - dalla_token
+          - beli_nft
+          - simple_dao
+          - faucet
+          - hello-belizechain
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -195,13 +231,15 @@ jobs:
       - name: Install tarpaulin
         run: cargo install cargo-tarpaulin
 
-      - name: Generate coverage
-        run: cargo tarpaulin --workspace --out Xml --timeout 300
+      - name: Generate coverage for ${{ matrix.contract }}
+        run: |
+          cd ${{ matrix.contract }}
+          cargo tarpaulin --out Xml --timeout 300 --output-dir ../
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: ./cobertura.xml
-          flags: contracts
-          name: gem-contracts
+          flags: ${{ matrix.contract }}
+          name: gem-${{ matrix.contract }}
           fail_ci_if_error: false

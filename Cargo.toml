@@ -3,12 +3,16 @@
 # This file provides workspace-level configuration for the GEM project.
 # Individual contracts are self-contained and can be built independently.
 #
-# Build DEX suite:
-#   cd dex && cargo build
+# NOTE: Each ink! contract is its own workspace and must be built separately.
+# This file only provides shared profile configuration.
 #
 # Build individual contracts:
-#   cargo contract build --manifest-path <contract>/Cargo.toml
+#   cd <contract> && cargo contract build
 #
+
+# This workspace section is intentionally minimal to avoid conflicts
+# with individual contract workspaces
+[workspace]
 
 [profile.release]
 opt-level = "z"

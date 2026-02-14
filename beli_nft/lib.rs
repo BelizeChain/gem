@@ -1,17 +1,17 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 /// # BeliNFT - PSP34 Compliant NFT Contract
-/// 
+///
 /// The official NFT contract for BelizeChain.
 /// Implements the PSP34 standard (Polkadot's ERC721 equivalent).
-/// 
+///
 /// ## Features
 /// - PSP34 standard compliance (mint, transfer, burn)
 /// - Metadata support (token URI)
 /// - Collection management
 /// - Enumeration support
 /// - Approval system
-/// 
+///
 /// ## Use Cases
 /// - Digital art collections
 /// - Land title NFTs (BelizeChain Land Ledger)
@@ -110,7 +110,7 @@ mod beli_nft {
         #[ink(constructor)]
         pub fn new(name: String, symbol: String) -> Self {
             let caller = Self::env().caller();
-            
+
             Self {
                 token_owner: Mapping::default(),
                 owned_tokens_count: Mapping::default(),
@@ -326,7 +326,8 @@ mod beli_nft {
             }
 
             let count = self.balance_of(to);
-            self.owned_tokens_count.insert(to, &(count.saturating_add(1)));
+            self.owned_tokens_count
+                .insert(to, &(count.saturating_add(1)));
             self.token_owner.insert(id, &to);
             self.token_uri.insert(id, &uri);
             self.total_supply = self.total_supply.saturating_add(1);
@@ -341,16 +342,23 @@ mod beli_nft {
         }
 
         /// Internal transfer function
-        fn transfer_token_from(&mut self, from: AccountId, to: AccountId, id: TokenId) -> Result<()> {
+        fn transfer_token_from(
+            &mut self,
+            from: AccountId,
+            to: AccountId,
+            id: TokenId,
+        ) -> Result<()> {
             // Clear approvals
             self.token_approvals.remove(id);
 
             // Update balances
             let from_count = self.balance_of(from);
-            self.owned_tokens_count.insert(from, &(from_count.saturating_sub(1)));
+            self.owned_tokens_count
+                .insert(from, &(from_count.saturating_sub(1)));
 
             let to_count = self.balance_of(to);
-            self.owned_tokens_count.insert(to, &(to_count.saturating_add(1)));
+            self.owned_tokens_count
+                .insert(to, &(to_count.saturating_add(1)));
 
             // Update ownership
             self.token_owner.insert(id, &to);
@@ -373,7 +381,8 @@ mod beli_nft {
 
             // Update balance
             let count = self.balance_of(owner);
-            self.owned_tokens_count.insert(owner, &(count.saturating_sub(1)));
+            self.owned_tokens_count
+                .insert(owner, &(count.saturating_sub(1)));
 
             // Remove token
             self.token_owner.remove(id);
@@ -418,11 +427,8 @@ mod beli_nft {
         fn new_works() {
             let accounts = default_accounts();
             set_caller(accounts.alice);
-            
-            let nft = BeliNft::new(
-                String::from("Belize NFT Collection"),
-                String::from("BNFT"),
-            );
+
+            let nft = BeliNft::new(String::from("Belize NFT Collection"), String::from("BNFT"));
 
             assert_eq!(nft.collection_name(), String::from("Belize NFT Collection"));
             assert_eq!(nft.collection_symbol(), String::from("BNFT"));
@@ -434,11 +440,8 @@ mod beli_nft {
         fn mint_works() {
             let accounts = default_accounts();
             set_caller(accounts.alice);
-            
-            let mut nft = BeliNft::new(
-                String::from("Belize NFT"),
-                String::from("BNFT"),
-            );
+
+            let mut nft = BeliNft::new(String::from("Belize NFT"), String::from("BNFT"));
 
             let uri = String::from("ipfs://QmTestHash");
             let result = nft.mint(accounts.bob, uri.clone());
@@ -456,11 +459,8 @@ mod beli_nft {
         fn mint_fails_not_owner() {
             let accounts = default_accounts();
             set_caller(accounts.alice);
-            
-            let mut nft = BeliNft::new(
-                String::from("Belize NFT"),
-                String::from("BNFT"),
-            );
+
+            let mut nft = BeliNft::new(String::from("Belize NFT"), String::from("BNFT"));
 
             // Try to mint as non-owner
             set_caller(accounts.bob);
@@ -473,11 +473,8 @@ mod beli_nft {
         fn transfer_works() {
             let accounts = default_accounts();
             set_caller(accounts.alice);
-            
-            let mut nft = BeliNft::new(
-                String::from("Belize NFT"),
-                String::from("BNFT"),
-            );
+
+            let mut nft = BeliNft::new(String::from("Belize NFT"), String::from("BNFT"));
 
             // Mint token to Bob
             let uri = String::from("ipfs://QmTestHash");
@@ -497,11 +494,8 @@ mod beli_nft {
         fn transfer_fails_not_owner() {
             let accounts = default_accounts();
             set_caller(accounts.alice);
-            
-            let mut nft = BeliNft::new(
-                String::from("Belize NFT"),
-                String::from("BNFT"),
-            );
+
+            let mut nft = BeliNft::new(String::from("Belize NFT"), String::from("BNFT"));
 
             let uri = String::from("ipfs://QmTestHash");
             let token_id = nft.mint(accounts.bob, uri).unwrap();
@@ -516,11 +510,8 @@ mod beli_nft {
         fn approve_works() {
             let accounts = default_accounts();
             set_caller(accounts.alice);
-            
-            let mut nft = BeliNft::new(
-                String::from("Belize NFT"),
-                String::from("BNFT"),
-            );
+
+            let mut nft = BeliNft::new(String::from("Belize NFT"), String::from("BNFT"));
 
             let uri = String::from("ipfs://QmTestHash");
             let token_id = nft.mint(accounts.bob, uri).unwrap();
@@ -543,11 +534,8 @@ mod beli_nft {
         fn approval_for_all_works() {
             let accounts = default_accounts();
             set_caller(accounts.alice);
-            
-            let mut nft = BeliNft::new(
-                String::from("Belize NFT"),
-                String::from("BNFT"),
-            );
+
+            let mut nft = BeliNft::new(String::from("Belize NFT"), String::from("BNFT"));
 
             // Mint two tokens to Bob
             let uri1 = String::from("ipfs://QmHash1");
@@ -572,11 +560,8 @@ mod beli_nft {
         fn burn_works() {
             let accounts = default_accounts();
             set_caller(accounts.alice);
-            
-            let mut nft = BeliNft::new(
-                String::from("Belize NFT"),
-                String::from("BNFT"),
-            );
+
+            let mut nft = BeliNft::new(String::from("Belize NFT"), String::from("BNFT"));
 
             let uri = String::from("ipfs://QmTestHash");
             let token_id = nft.mint(accounts.bob, uri).unwrap();
@@ -596,11 +581,8 @@ mod beli_nft {
         fn transfer_ownership_works() {
             let accounts = default_accounts();
             set_caller(accounts.alice);
-            
-            let mut nft = BeliNft::new(
-                String::from("Belize NFT"),
-                String::from("BNFT"),
-            );
+
+            let mut nft = BeliNft::new(String::from("Belize NFT"), String::from("BNFT"));
 
             assert_eq!(nft.contract_owner(), accounts.alice);
 
@@ -624,11 +606,8 @@ mod beli_nft {
         fn multiple_mints_increment_ids() {
             let accounts = default_accounts();
             set_caller(accounts.alice);
-            
-            let mut nft = BeliNft::new(
-                String::from("Belize NFT"),
-                String::from("BNFT"),
-            );
+
+            let mut nft = BeliNft::new(String::from("Belize NFT"), String::from("BNFT"));
 
             let uri1 = String::from("ipfs://QmHash1");
             let uri2 = String::from("ipfs://QmHash2");

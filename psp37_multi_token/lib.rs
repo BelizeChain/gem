@@ -27,7 +27,7 @@ mod psp37_multi_token {
 
     /// Token ID type (u128 allows 2^128 unique token types)
     pub type TokenId = u128;
-    
+
     /// Amount type for token balances (use u128 for compatibility)
     pub type TokenBalance = u128;
 
@@ -39,20 +39,20 @@ mod psp37_multi_token {
     pub struct Psp37MultiToken {
         /// Balances mapping: (owner, token_id) => balance
         balances: Mapping<(AccountId, TokenId), Balance>,
-        
+
         /// Operator approvals: (owner, operator) => approved
         /// Operators can transfer ANY token on behalf of owner
         operator_approvals: Mapping<(AccountId, AccountId), bool>,
-        
+
         /// Total supply per token ID
         total_supply: Mapping<TokenId, Balance>,
-        
+
         /// Token URIs for metadata (optional)
         token_uris: Mapping<TokenId, String>,
-        
+
         /// Contract owner (for minting control)
         owner: AccountId,
-        
+
         /// Next token ID for auto-increment
         next_token_id: TokenId,
     }
@@ -229,18 +229,15 @@ mod psp37_multi_token {
 
         /// Approve or revoke operator to manage all tokens of caller
         #[ink(message)]
-        pub fn set_approval_for_all(
-            &mut self,
-            operator: AccountId,
-            approved: bool,
-        ) -> Result<()> {
+        pub fn set_approval_for_all(&mut self, operator: AccountId, approved: bool) -> Result<()> {
             let caller = self.env().caller();
-            
+
             if caller == operator {
                 return Err(Error::SelfApproval);
             }
 
-            self.operator_approvals.insert((caller, operator), &approved);
+            self.operator_approvals
+                .insert((caller, operator), &approved);
 
             self.env().emit_event(ApprovalForAll {
                 owner: caller,
@@ -254,7 +251,9 @@ mod psp37_multi_token {
         /// Check if operator is approved for owner
         #[ink(message)]
         pub fn is_approved_for_all(&self, owner: AccountId, operator: AccountId) -> bool {
-            self.operator_approvals.get((owner, operator)).unwrap_or(false)
+            self.operator_approvals
+                .get((owner, operator))
+                .unwrap_or(false)
         }
 
         // ========================================================================
@@ -371,7 +370,7 @@ mod psp37_multi_token {
             amount: TokenBalance,
         ) -> Result<()> {
             let caller = self.env().caller();
-            
+
             // Check authorization
             if caller != from && !self.is_approved_for_all(from, caller) {
                 return Err(Error::NotAuthorized);
@@ -444,10 +443,12 @@ mod psp37_multi_token {
             }
 
             // Update balances
-            self.balances.insert((from, token_id), &(from_balance - value));
-            
+            self.balances
+                .insert((from, token_id), &(from_balance - value));
+
             let to_balance = self.balance_of(to, token_id);
-            self.balances.insert((to, token_id), &(to_balance.saturating_add(value)));
+            self.balances
+                .insert((to, token_id), &(to_balance.saturating_add(value)));
 
             // Emit event
             self.env().emit_event(TransferSingle {
@@ -491,10 +492,12 @@ mod psp37_multi_token {
                     return Err(Error::InsufficientBalance);
                 }
 
-                self.balances.insert((from, *token_id), &(from_balance - *value));
-                
+                self.balances
+                    .insert((from, *token_id), &(from_balance - *value));
+
                 let to_balance = self.balance_of(to, *token_id);
-                self.balances.insert((to, *token_id), &(to_balance.saturating_add(*value)));
+                self.balances
+                    .insert((to, *token_id), &(to_balance.saturating_add(*value)));
             }
 
             // Emit event
@@ -517,11 +520,13 @@ mod psp37_multi_token {
 
             // Update balance
             let balance = self.balance_of(to, token_id);
-            self.balances.insert((to, token_id), &(balance.saturating_add(amount)));
+            self.balances
+                .insert((to, token_id), &(balance.saturating_add(amount)));
 
             // Update total supply
             let supply = self.total_supply(token_id);
-            self.total_supply.insert(token_id, &(supply.saturating_add(amount)));
+            self.total_supply
+                .insert(token_id, &(supply.saturating_add(amount)));
 
             // Emit event
             self.env().emit_event(TransferSingle {
@@ -536,7 +541,12 @@ mod psp37_multi_token {
         }
 
         /// Internal burn implementation
-        fn _burn(&mut self, from: AccountId, token_id: TokenId, amount: TokenBalance) -> Result<()> {
+        fn _burn(
+            &mut self,
+            from: AccountId,
+            token_id: TokenId,
+            amount: TokenBalance,
+        ) -> Result<()> {
             // Check balance
             let balance = self.balance_of(from, token_id);
             if balance < amount {
@@ -581,22 +591,27 @@ mod psp37_multi_token {
         fn create_token_works() {
             let mut contract = Psp37MultiToken::new();
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-            
-            let token_id = contract.create_token(1000, Some("https://example.com/token/1".into())).unwrap();
-            
+
+            let token_id = contract
+                .create_token(1000, Some("https://example.com/token/1".into()))
+                .unwrap();
+
             assert_eq!(token_id, 1);
             assert_eq!(contract.balance_of(accounts.alice, token_id), 1000);
             assert_eq!(contract.total_supply(token_id), 1000);
-            assert_eq!(contract.token_uri(token_id), Some("https://example.com/token/1".into()));
+            assert_eq!(
+                contract.token_uri(token_id),
+                Some("https://example.com/token/1".into())
+            );
         }
 
         #[ink::test]
         fn transfer_works() {
             let mut contract = Psp37MultiToken::new();
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-            
+
             let token_id = contract.create_token(1000, None).unwrap();
-            
+
             // Transfer 100 tokens
             assert!(contract.transfer(accounts.bob, token_id, 100).is_ok());
             assert_eq!(contract.balance_of(accounts.alice, token_id), 900);
@@ -607,9 +622,9 @@ mod psp37_multi_token {
         fn transfer_fails_insufficient_balance() {
             let mut contract = Psp37MultiToken::new();
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-            
+
             let token_id = contract.create_token(100, None).unwrap();
-            
+
             // Try to transfer more than balance
             assert_eq!(
                 contract.transfer(accounts.bob, token_id, 1000),
@@ -621,11 +636,11 @@ mod psp37_multi_token {
         fn approval_for_all_works() {
             let mut contract = Psp37MultiToken::new();
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-            
+
             // Approve operator
             assert!(contract.set_approval_for_all(accounts.bob, true).is_ok());
             assert!(contract.is_approved_for_all(accounts.alice, accounts.bob));
-            
+
             // Revoke approval
             assert!(contract.set_approval_for_all(accounts.bob, false).is_ok());
             assert!(!contract.is_approved_for_all(accounts.alice, accounts.bob));
@@ -635,17 +650,19 @@ mod psp37_multi_token {
         fn transfer_from_works() {
             let mut contract = Psp37MultiToken::new();
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-            
+
             let token_id = contract.create_token(1000, None).unwrap();
-            
+
             // Approve operator
             contract.set_approval_for_all(accounts.bob, true).unwrap();
-            
+
             // Change caller to Bob
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.bob);
-            
+
             // Bob transfers Alice's tokens
-            assert!(contract.transfer_from(accounts.alice, accounts.charlie, token_id, 100).is_ok());
+            assert!(contract
+                .transfer_from(accounts.alice, accounts.charlie, token_id, 100)
+                .is_ok());
             assert_eq!(contract.balance_of(accounts.alice, token_id), 900);
             assert_eq!(contract.balance_of(accounts.charlie, token_id), 100);
         }
@@ -654,16 +671,18 @@ mod psp37_multi_token {
         fn batch_transfer_works() {
             let mut contract = Psp37MultiToken::new();
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-            
+
             // Create multiple token types
             let token1 = contract.create_token(1000, None).unwrap();
             let token2 = contract.create_token(2000, None).unwrap();
-            
+
             // Batch transfer
             let token_ids = vec![token1, token2];
             let values = vec![100, 200];
-            
-            assert!(contract.batch_transfer(accounts.bob, token_ids.clone(), values.clone()).is_ok());
+
+            assert!(contract
+                .batch_transfer(accounts.bob, token_ids.clone(), values.clone())
+                .is_ok());
             assert_eq!(contract.balance_of(accounts.alice, token1), 900);
             assert_eq!(contract.balance_of(accounts.alice, token2), 1800);
             assert_eq!(contract.balance_of(accounts.bob, token1), 100);
@@ -674,16 +693,18 @@ mod psp37_multi_token {
         fn batch_mint_works() {
             let mut contract = Psp37MultiToken::new();
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-            
+
             // Create token types without initial supply
             let token1 = contract.create_token(0, None).unwrap();
             let token2 = contract.create_token(0, None).unwrap();
-            
+
             // Batch mint
             let token_ids = vec![token1, token2];
             let amounts = vec![500, 1000];
-            
-            assert!(contract.batch_mint(accounts.bob, token_ids, amounts).is_ok());
+
+            assert!(contract
+                .batch_mint(accounts.bob, token_ids, amounts)
+                .is_ok());
             assert_eq!(contract.balance_of(accounts.bob, token1), 500);
             assert_eq!(contract.balance_of(accounts.bob, token2), 1000);
         }
@@ -692,9 +713,9 @@ mod psp37_multi_token {
         fn burn_works() {
             let mut contract = Psp37MultiToken::new();
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-            
+
             let token_id = contract.create_token(1000, None).unwrap();
-            
+
             // Burn 100 tokens
             assert!(contract.burn(token_id, 100).is_ok());
             assert_eq!(contract.balance_of(accounts.alice, token_id), 900);
@@ -705,13 +726,13 @@ mod psp37_multi_token {
         fn balance_of_batch_works() {
             let mut contract = Psp37MultiToken::new();
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-            
+
             let token1 = contract.create_token(1000, None).unwrap();
             let token2 = contract.create_token(2000, None).unwrap();
-            
+
             let owners = vec![accounts.alice, accounts.alice];
             let token_ids = vec![token1, token2];
-            
+
             let balances = contract.balance_of_batch(owners, token_ids).unwrap();
             assert_eq!(balances, vec![1000, 2000]);
         }

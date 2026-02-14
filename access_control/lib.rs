@@ -253,7 +253,8 @@ pub mod access_control {
         pub fn new(admin: AccountId) -> Self {
             let mut data = Self::default();
             data.roles.insert((DEFAULT_ADMIN_ROLE, admin), &());
-            data.role_admins.insert(DEFAULT_ADMIN_ROLE, &DEFAULT_ADMIN_ROLE);
+            data.role_admins
+                .insert(DEFAULT_ADMIN_ROLE, &DEFAULT_ADMIN_ROLE);
             data
         }
 
@@ -273,9 +274,7 @@ pub mod access_control {
 
         /// Get admin role for a role
         pub fn get_role_admin(&self, role: RoleType) -> RoleType {
-            self.role_admins
-                .get(role)
-                .unwrap_or(DEFAULT_ADMIN_ROLE)
+            self.role_admins.get(role).unwrap_or(DEFAULT_ADMIN_ROLE)
         }
 
         /// Grant role to account
@@ -555,9 +554,10 @@ mod example_contract {
         #[ink(message)]
         pub fn grant_role(&mut self, role: RoleType, account: AccountId) -> Result<()> {
             let caller = self.env().caller();
-            self.access_control.grant_role(caller, role, account, |event| {
-                self.env().emit_event(event);
-            })
+            self.access_control
+                .grant_role(caller, role, account, |event| {
+                    self.env().emit_event(event);
+                })
         }
 
         /// Revoke role (admin only)

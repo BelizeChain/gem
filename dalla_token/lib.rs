@@ -1,17 +1,17 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 /// # DALLA Token - PSP22 Compliant
-/// 
+///
 /// The official wrapped token for BelizeChain's native DALLA currency.
 /// Implements the PSP22 standard (Polkadot's ERC20 equivalent).
-/// 
+///
 /// ## Features
 /// - PSP22 standard compliance (transfer, approve, transferFrom)
 /// - Minting and burning (controlled by owner)
 /// - Total supply tracking
 /// - Event emission for all operations
 /// - Allowance management
-/// 
+///
 /// ## Economics
 /// - Symbol: DALLA
 /// - Decimals: 12 (same as native DALLA)
@@ -85,7 +85,7 @@ mod dalla_token {
         pub fn new(initial_supply: u128) -> Self {
             let caller = Self::env().caller();
             let max_supply = 100_000_000_000_000_000_000_u128; // 100M DALLA
-            
+
             let mut balances = Mapping::default();
             balances.insert(caller, &initial_supply);
 
@@ -170,12 +170,7 @@ mod dalla_token {
 
         /// Transfers tokens from one account to another using allowance
         #[ink(message)]
-        pub fn transfer_from(
-            &mut self,
-            from: AccountId,
-            to: AccountId,
-            value: u128,
-        ) -> Result<()> {
+        pub fn transfer_from(&mut self, from: AccountId, to: AccountId, value: u128) -> Result<()> {
             let caller = self.env().caller();
             let allowance = self.allowance(from, caller);
 
@@ -198,7 +193,7 @@ mod dalla_token {
             let owner = self.env().caller();
             let allowance = self.allowance(owner, spender);
             let new_allowance = allowance.checked_add(delta).ok_or(Error::Overflow)?;
-            
+
             self.allowances.insert((owner, spender), &new_allowance);
 
             self.env().emit_event(Approval {
@@ -215,7 +210,7 @@ mod dalla_token {
         pub fn decrease_allowance(&mut self, spender: AccountId, delta: u128) -> Result<()> {
             let owner = self.env().caller();
             let allowance = self.allowance(owner, spender);
-            
+
             if allowance < delta {
                 return Err(Error::InsufficientAllowance);
             }
@@ -240,7 +235,10 @@ mod dalla_token {
                 return Err(Error::UnauthorizedAccess);
             }
 
-            let new_supply = self.total_supply.checked_add(value).ok_or(Error::Overflow)?;
+            let new_supply = self
+                .total_supply
+                .checked_add(value)
+                .ok_or(Error::Overflow)?;
             if new_supply > self.max_supply {
                 return Err(Error::ExceedsMaxSupply);
             }
@@ -302,12 +300,7 @@ mod dalla_token {
         }
 
         /// Internal transfer function
-        fn transfer_from_to(
-            &mut self,
-            from: AccountId,
-            to: AccountId,
-            value: u128,
-        ) -> Result<()> {
+        fn transfer_from_to(&mut self, from: AccountId, to: AccountId, value: u128) -> Result<()> {
             let from_balance = self.balance_of(from);
             if from_balance < value {
                 return Err(Error::InsufficientBalance);
@@ -341,7 +334,7 @@ mod dalla_token {
         fn new_works() {
             let initial_supply = 21_000_000_000_000_000_000_u128; // 21M DALLA
             let token = DallaToken::new(initial_supply);
-            
+
             assert_eq!(token.total_supply(), initial_supply);
             assert_eq!(token.token_symbol(), "DALLA");
             assert_eq!(token.token_decimals(), 12);
@@ -352,7 +345,7 @@ mod dalla_token {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let initial_supply = 1_000_000_000_000_u128; // 1M DALLA
             let token = DallaToken::new(initial_supply);
-            
+
             assert_eq!(token.balance_of(accounts.alice), initial_supply);
             assert_eq!(token.balance_of(accounts.bob), 0);
         }
@@ -361,7 +354,7 @@ mod dalla_token {
         fn transfer_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let mut token = DallaToken::new(1_000_000_000_000_u128);
-            
+
             assert!(token.transfer(accounts.bob, 100_000_000_000).is_ok());
             assert_eq!(token.balance_of(accounts.alice), 900_000_000_000);
             assert_eq!(token.balance_of(accounts.bob), 100_000_000_000);
@@ -371,7 +364,7 @@ mod dalla_token {
         fn transfer_fails_insufficient_balance() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let mut token = DallaToken::new(100_000_000_000_u128);
-            
+
             let result = token.transfer(accounts.bob, 200_000_000_000);
             assert_eq!(result, Err(Error::InsufficientBalance));
         }
@@ -380,35 +373,43 @@ mod dalla_token {
         fn approve_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let mut token = DallaToken::new(1_000_000_000_000_u128);
-            
+
             assert!(token.approve(accounts.bob, 100_000_000_000).is_ok());
-            assert_eq!(token.allowance(accounts.alice, accounts.bob), 100_000_000_000);
+            assert_eq!(
+                token.allowance(accounts.alice, accounts.bob),
+                100_000_000_000
+            );
         }
 
         #[ink::test]
         fn transfer_from_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let mut token = DallaToken::new(1_000_000_000_000_u128);
-            
+
             // Alice approves Bob to spend 100 DALLA
             assert!(token.approve(accounts.bob, 100_000_000_000).is_ok());
-            
+
             // Change caller to Bob
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.bob);
-            
+
             // Bob transfers from Alice to Charlie
-            assert!(token.transfer_from(accounts.alice, accounts.charlie, 50_000_000_000).is_ok());
-            
+            assert!(token
+                .transfer_from(accounts.alice, accounts.charlie, 50_000_000_000)
+                .is_ok());
+
             assert_eq!(token.balance_of(accounts.alice), 950_000_000_000);
             assert_eq!(token.balance_of(accounts.charlie), 50_000_000_000);
-            assert_eq!(token.allowance(accounts.alice, accounts.bob), 50_000_000_000);
+            assert_eq!(
+                token.allowance(accounts.alice, accounts.bob),
+                50_000_000_000
+            );
         }
 
         #[ink::test]
         fn mint_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let mut token = DallaToken::new(1_000_000_000_000_u128);
-            
+
             assert!(token.mint(accounts.bob, 500_000_000_000).is_ok());
             assert_eq!(token.total_supply(), 1_500_000_000_000);
             assert_eq!(token.balance_of(accounts.bob), 500_000_000_000);
@@ -418,7 +419,7 @@ mod dalla_token {
         fn mint_fails_exceeds_max_supply() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let mut token = DallaToken::new(1_000_000_000_000_u128);
-            
+
             let result = token.mint(accounts.bob, 100_000_000_000_000_000_000_u128);
             assert_eq!(result, Err(Error::ExceedsMaxSupply));
         }
@@ -427,7 +428,7 @@ mod dalla_token {
         fn burn_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let mut token = DallaToken::new(1_000_000_000_000_u128);
-            
+
             assert!(token.burn(200_000_000_000).is_ok());
             assert_eq!(token.total_supply(), 800_000_000_000);
             assert_eq!(token.balance_of(accounts.alice), 800_000_000_000);
@@ -437,22 +438,30 @@ mod dalla_token {
         fn increase_allowance_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let mut token = DallaToken::new(1_000_000_000_000_u128);
-            
+
             assert!(token.approve(accounts.bob, 100_000_000_000).is_ok());
-            assert!(token.increase_allowance(accounts.bob, 50_000_000_000).is_ok());
-            assert_eq!(token.allowance(accounts.alice, accounts.bob), 150_000_000_000);
+            assert!(token
+                .increase_allowance(accounts.bob, 50_000_000_000)
+                .is_ok());
+            assert_eq!(
+                token.allowance(accounts.alice, accounts.bob),
+                150_000_000_000
+            );
         }
 
         #[ink::test]
         fn decrease_allowance_works() {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             let mut token = DallaToken::new(1_000_000_000_000_u128);
-            
+
             assert!(token.approve(accounts.bob, 100_000_000_000).is_ok());
-            assert!(token.decrease_allowance(accounts.bob, 30_000_000_000).is_ok());
-            assert_eq!(token.allowance(accounts.alice, accounts.bob), 70_000_000_000);
+            assert!(token
+                .decrease_allowance(accounts.bob, 30_000_000_000)
+                .is_ok());
+            assert_eq!(
+                token.allowance(accounts.alice, accounts.bob),
+                70_000_000_000
+            );
         }
     }
-
-
 }
