@@ -15,6 +15,8 @@
 ✅ **DAO governance** - Proposal creation and voting  
 ✅ **Testnet faucet** - Automated token distribution  
 ✅ **Contract ABIs included** - No manual ABI management  
+✅ **Mesh Network** - LoRa mesh node integration (v1.1.0+)  
+✅ **Privacy SDK** - Commitment hashes for private data (v1.1.0+)  
 
 ---
 

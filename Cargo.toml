@@ -1,24 +1,18 @@
-[workspace]
-members = [
-    "dalla_token",
-    "beli_nft",
-    "simple_dao",
-    "faucet",
-    "hello-belizechain",
-]
-
-resolver = "2"
-
-[workspace.package]
-version = "1.0.0"
-authors = ["BelizeChain Team <dev@belizechain.io>"]
-edition = "2021"
-license = "MIT"
-homepage = "https://belizechain.io"
-repository = "https://github.com/BelizeChain/gem"
+# GEM (General Ecosystem Machinery) - Virtual Workspace
+#
+# This file provides workspace-level configuration for the GEM project.
+# Individual contracts are self-contained and can be built independently.
+#
+# Build DEX suite:
+#   cd dex && cargo build
+#
+# Build individual contracts:
+#   cargo contract build --manifest-path <contract>/Cargo.toml
+#
 
 [profile.release]
 opt-level = "z"
 lto = true
 codegen-units = 1
 overflow-checks = true
+

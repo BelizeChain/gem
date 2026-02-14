@@ -251,3 +251,11 @@ export declare class GemSDK {
      */
     faucetStats(contractAddress: string): Promise<FaucetStats>;
 }
+
+// ============================================
+// Export extension modules (v1.1.0+)
+// ============================================
+
+export { MeshNetworkSDK, MeshNodeRole, MeshNodeType } from './meshNetwork';
+export { PrivacySDK } from './privacy';
+export { BelizeXSDK } from './belizex';

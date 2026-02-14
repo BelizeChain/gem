@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "factory",
+    "pair",
+    "router",
+]
+
+resolver = "2"

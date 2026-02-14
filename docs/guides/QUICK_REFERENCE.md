@@ -36,16 +36,30 @@ cargo contract build --release
 ## 📦 What's Included
 
 ### Smart Contracts (Rust + ink!)
+
+**Core Tokens & Standards:**
 - **DALLA Token** - PSP22 fungible token (459 lines)
 - **BeliNFT** - PSP34 NFT collection (649 lines)
+- **PSP37 Multi-Token** - Multi-token standard (650 lines, 12 tests) 🆕
+
+**DeFi Primitives:**
+- **BelizeX Factory** - Trading pair creation and management (350 lines, 8 tests) 🆕
+- **BelizeX Pair** - Constant product AMM (x*y=k) with liquidity pools (832 lines, 4 tests) 🆕
+- **BelizeX Router** - User-friendly swap interface with slippage protection (652 lines, 4 tests) 🆕
+
+**Governance & Utilities:**
 - **Simple DAO** - Governance contract (536 lines)
 - **Faucet** - Testnet token distribution (327 lines)
-- **Hello BelizeChain** - Example contract (309 lines)
+- **Access Control** - Reusable security patterns (Ownable, RBAC, Pausable) (550 lines) 🆕
+
+**Examples:**
+- **Hello BelizeChain** - Example contract with E2E tests (309 lines)
 
 ### SDK (JavaScript/TypeScript)
 - Complete Polkadot.js wrapper
 - TypeScript definitions included
-- 5 working examples
+- **5 SDK modules**: GemSDK, MeshNetworkSDK, PrivacySDK, BelizeXSDK 🆕, Utilities
+- **8 working examples** (faucet, DAO voting, NFT minting, transfers, mesh network, privacy payroll, BelizeX swap 🆕)
 - All contract ABIs bundled
 
 ### Documentation
@@ -78,6 +92,25 @@ cargo contract build --release
 - ✅ Execution after pass
 - ✅ NFT membership (optional)
 
+### BelizeX (Decentralized Exchange) 🆕
+- ✅ Factory: Create and manage trading pairs
+- ✅ Pair: Constant product AMM (x*y=k)
+- ✅ Router: User-friendly swap interface
+- ✅ Liquidity provision (add/remove)
+- ✅ Token swaps with 0.3% fee
+- ✅ Multi-hop routing (A→B→C)
+- ✅ Slippage protection
+- ✅ TWAP price oracle
+- ✅ PSP22 cross-contract calls
+
+### Access Control & Security 🆕
+- ✅ Ownable pattern (single owner)
+- ✅ Role-based access control (RBAC)
+- ✅ Pausable functionality
+- ✅ Reentrancy protection
+- ✅ Security audit checklist (149 points)
+- ✅ Best practices guide
+
 ### Faucet
 - ✅ Configurable drip amount
 - ✅ Cooldown period
@@ -94,11 +127,13 @@ cargo contract build --release
 
 ## 📊 Project Stats
 
-- **Repository Size**: 308KB (optimized)
-- **Total Contracts**: 5
-- **Total Code Lines**: 2,280+ (Rust)
-- **SDK Size**: 88KB
-- **Documentation**: 1,000+ lines
+- **Repository Size**: 380KB+ (contracts, SDK, and documentation)
+- **Total Contracts**: 11 production-ready smart contracts
+- **Total Code Lines**: 5,600+ lines of Rust (contracts) + 2,300+ lines of JavaScript/TypeScript (SDK)
+- **SDK Size**: 120KB (5 specialized modules with full TypeScript support)
+- **SDK Modules**: 5 (GemSDK, MeshNetworkSDK, PrivacySDK, BelizeXSDK, Utilities)
+- **Documentation**: 3,500+ lines across README, tutorials, guides, and API references
+- **Tests**: 40+ comprehensive test cases
 - **License**: MIT
 
 ## 🛠️ Development Commands
@@ -167,10 +202,11 @@ The Gem is part of BelizeChain's sovereign digital infrastructure for the nation
 - 💰 Economy pallet (DALLA/bBZD dual currency)
 - 🤖 Nawal AI (117M parameter federated learning + genome evolution)
 - ⚛️ Kinich Quantum (Azure Quantum + post-quantum cryptography)
-- 📦 Pakit Storage (IPFS/Arweave + quantum-resistant compression)
+- 📦 Pakit Storage (DAG-based sovereign storage + quantum-resistant compression)
 - 🆔 BelizeID (SSN/Passport + KYC/AML)
 - 🌐 BNS (.bz domains + decentralized hosting)
-- 🏛️ Governance (15 custom pallets)
+- 📡 Mesh Network (Meshtastic LoRa for off-grid transactions)
+- 🏛️ Governance (16 custom pallets)
 
 ---
 

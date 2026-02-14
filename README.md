@@ -1,18 +1,51 @@
-# 💎 The Gem - BelizeChain Smart Contracts
+# 💎 The GEM (General Ecosystem Machinery)
 
-**The Gem** is BelizeChain's smart contract platform powered by ink! and `pallet-contracts`.
+> **Production-grade smart contract ecosystem for BelizeChain**  
+> ink! 5.0 | Substrate Contracts | DeFi Primitives
 
-## What is The Gem?
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![ink! 5.0](https://img.shields.io/badge/ink!-5.0-blue)](https://use.ink/)
+[![BelizeChain](https://img.shields.io/badge/BelizeChain-v0.2.0--alpha-brightgreen)](https://github.com/BelizeChain/belizechain)
 
-The Gem brings programmable smart contracts to BelizeChain, enabling developers to build decentralized applications that can:
+**The GEM** is BelizeChain's comprehensive smart contract platform powered by ink! and `pallet-contracts`. It provides production-ready contracts, DeFi primitives, security frameworks, and seamless runtime integration.
+
+---
+
+## 🎯 Core Features
+
+### 🔄 BelizeX - Decentralized Exchange
+Production-ready Uniswap V2-style automated market maker:
+- **Factory Contract**: Creates and manages trading pairs with deterministic addresses
+- **Pair Contract**: Constant product AMM (x*y=k) with liquidity pools and TWAP oracle  
+- **Router Contract**: User-friendly swap interface with multi-hop routing and slippage protection
+- **PSP22 Integration**: Seamless cross-contract token transfers
+- **Complete SDK**: BelizeXSDK module with 22 methods (JavaScript + TypeScript)
+- **Comprehensive Documentation**: Architecture guides, deployment instructions, and integration examples
+
+📖 **[BelizeX Documentation](docs/belizex/README.md)** | **[Deployment Guide](docs/belizex/DEPLOYMENT.md)** | **[SDK Example](sdk/examples/belizex-swap.js)**
+
+### 🔐 Security & Standards
+Enterprise-grade patterns and frameworks:
+- **PSP37 Multi-Token** (650 lines): Batch operations with mixed fungible/NFT support
+- **Access Control Library** (550 lines): Ownable, RBAC, and Pausable patterns
+- **Security Audit Checklist**: 149-point comprehensive audit guide
+- **Best Practices Guide**: Gas optimization, storage management, testing strategies
+- **Runtime Integration**: MeshNetworkSDK and PrivacySDK for BelizeChain pallets
+
+---
+
+## What is The GEM?
+
+The GEM brings programmable smart contracts to BelizeChain with unique capabilities:
 
 - 💰 Interact with DALLA/bBZD tokens through the Economy pallet
 - 🤖 Access AI predictions via Nawal integration (federated learning + genome evolution)
 - ⚛️ Execute quantum computations through Kinich (Azure Quantum + post-quantum cryptography)
-- 📦 Store data on IPFS/Arweave via Pakit (with quantum-resistant compression)
+- 📦 Store data on sovereign DAG storage via Pakit (with quantum-resistant compression)
 - 🆔 Verify identities using BelizeID (SSN/Passport + KYC)
 - 🏛️ Participate in governance and proposals
 - 🌐 Register .bz domains via BNS (Belize Name Service)
+- 📡 Access Meshtastic LoRa mesh network for off-grid transactions
 
 ---
 
@@ -20,18 +53,18 @@ The Gem brings programmable smart contracts to BelizeChain, enabling developers 
 
 ### 📚 Quick Links
 
-- **[5-Minute Quick Start](QUICK_START.md)** - Get your first contract deployed
-- **[Tutorial Series](TUTORIAL.md)** - 5 step-by-step guides (beginner to advanced)
-- **[API Reference](API_REFERENCE.md)** - Complete function documentation with gas estimates
-- **[Integration Guide](INTEGRATION_GUIDE.md)** - Cross-contract patterns and best practices
-- **[SDK Documentation](sdk/README.md)** - JavaScript/TypeScript SDK
+- **[Quick Reference](docs/guides/QUICK_REFERENCE.md)** - Fast lookup for all contracts and features
+- **[Tutorial Series](docs/guides/TUTORIAL.md)** - 5 step-by-step guides (beginner to advanced)
+- **[Contributing Guide](docs/guides/CONTRIBUTING.md)** - How to contribute to the project
+- **[Best Practices](docs/guides/BEST_PRACTICES.md)** - Development patterns and optimization
+- **[SDK Documentation](docs/sdk/README.md)** - JavaScript/TypeScript SDK
 
 ### 💧 Get Test Tokens
 
 **Testnet Faucet**: Available (contract built and ready for deployment)
 - **Drip Amount**: 1000 DALLA per claim
 - **Cooldown**: 100 blocks (~10 minutes)
-- **Usage**: `gem faucet claim` or use the [SDK](sdk/README.md)
+- **Usage**: `gem faucet claim` or use the [SDK](docs/sdk/README.md)
 
 ### 📦 Install SDK
 
@@ -58,9 +91,9 @@ See [SDK examples](sdk/examples/) for complete code samples.
 
 ### 🎓 Learning Path
 
-1. **Beginner** (1 hour): Start with [Quick Start](QUICK_START.md) → Deploy your first contract
-2. **Intermediate** (2 hours): Follow [Tutorial Series](TUTORIAL.md) → Build tokens, NFTs, DAOs
-3. **Advanced** (ongoing): Read [Integration Guide](INTEGRATION_GUIDE.md) → Cross-contract patterns
+1. **Beginner** (30 minutes): Start with [Quick Reference](docs/guides/QUICK_REFERENCE.md) → Understand all features
+2. **Intermediate** (2 hours): Follow [Tutorial Series](docs/guides/TUTORIAL.md) → Build tokens, NFTs, DAOs
+3. **Advanced** (ongoing): Read [Best Practices](docs/guides/BEST_PRACTICES.md) → Optimization and patterns
 
 ### 📊 Production Contracts
 
@@ -89,7 +122,7 @@ See [SDK examples](sdk/examples/) for complete code samples.
 cargo install cargo-contract --force
 ```
 
-2. **Build BelizeChain** with Spike support:
+2. **Build BelizeChain** with GEM support:
 ```bash
 cd /home/wicked/BelizeChain/belizechain
 cargo build --release
@@ -199,27 +232,38 @@ The Gem integrates with BelizeChain's runtime through:
 ## Development Status
 
 ### ✅ Completed
-- pallet-contracts integration in runtime (Polkadot SDK stable2512)
-- DALLA Token (PSP22 standard) - 459 lines, production-ready
-- BeliNFT (PSP34 standard) - 649 lines, production-ready
-- Simple DAO governance contract - 536 lines, production-ready
-- Faucet contract for testnet - 327 lines, production-ready
-- Hello BelizeChain example contract - 309 lines, production-ready
-- JavaScript/TypeScript SDK with full contract support
-- Comprehensive tutorial series and documentation
-- Integration with all 15 BelizeChain pallets (Economy, Identity, Governance, Compliance, Staking, Oracle, Payroll, Interoperability, BelizeX, LandLedger, Consensus, Quantum, Community, BNS, Contracts)
+- **Smart Contract Runtime**: pallet-contracts integration (Polkadot SDK stable2512)
+- **Token Standards**:
+  - DALLA Token (PSP22 standard) - 459 lines, production-ready
+  - BeliNFT (PSP34 standard) - 649 lines, production-ready
+  - **PSP37 Multi-Token** - ✨ NEW: 650 lines, batch operations, mixed fungible/NFT support
+- **Access Control Library** - ✨ NEW: Ownable, AccessControl (RBAC), Pausable patterns (550 lines)
+- **Governance & Utilities**:
+  - Simple DAO governance contract - 536 lines, production-ready
+  - Faucet contract for testnet - 327 lines, production-ready
+  - Hello BelizeChain example - 309 lines, production-ready
+- **Developer Tools**:
+  - JavaScript/TypeScript SDK with full contract support (7 modules)
+  - MeshNetworkSDK and PrivacySDK for BelizeChain integrations
+  - Comprehensive tutorial series (5 guides)
+- **Documentation** - ✨ NEW:
+  - Security Audit Checklist (149 points)
+  - Best Practices Guide (gas optimization, testing, security patterns)
+  - 12-week Extension Roadmap (GEM → production-grade platform)
+- **Runtime Integration**: All 16 BelizeChain pallets (Economy, Identity, Governance, Compliance, Staking, Oracle, Payroll, Interoperability, BelizeX, LandLedger, Consensus, Quantum, Community, BNS, Mesh, Contracts)
 
-### 🚧 In Progress
-- Chain extensions for Nawal AI (federated learning inference), Kinich Quantum (quantum RNG + PQC), and Pakit Storage (IPFS/Arweave)
-- CLI wrapper around cargo-contract for improved developer experience
-- Additional example contracts (marketplace, lending, staking)
-- Post-quantum cryptography integration (CRYSTALS-Dilithium signatures, CRYSTALS-Kyber key exchange)
+### 🚧 In Development
+- **Chain Extensions**: Advanced integrations for Nawal AI (federated learning), Kinich Quantum (quantum RNG), Pakit Storage (DAG-based storage), and Mesh Network (LoRa relay)
+- **Additional DeFi Primitives**: Lending protocols, staking contracts, yield farming
+- **GEM CLI Tool**: Professional scaffolding and deployment tool (`gem contract init`, `gem belizex deploy`)
+- **Contract Templates Library**: Production-ready templates for common patterns (multisig, vesting, marketplace, gaming)
+- **Advanced SDK Features**: Contract upgrade helpers, migration tools, gas optimization utilities
 
-### 📋 Planned
-- Testnet contract deployment and verification
-- Documentation portal with interactive examples
-- Contract upgrade patterns and migration tools
-- Advanced cross-contract integration patterns
+### 📋 Roadmap
+- Enhanced testnet deployment tools and contract verification
+- Interactive documentation portal with live code examples
+- Cross-contract design patterns and composition techniques
+- Integration guides for all BelizeChain pallets (Economy, Governance, Identity, etc.)
 
 ## Resources
 

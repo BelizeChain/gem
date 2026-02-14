@@ -458,5 +458,15 @@ class GemSDK {
     }
 }
 
-// Export SDK class
+// Export main SDK class
 module.exports = { GemSDK };
+
+// Export extension modules (v1.1.0+)
+module.exports.MeshNetworkSDK = require('./meshNetwork');
+module.exports.PrivacySDK = require('./privacy');
+module.exports.BelizeXSDK = require('./belizex').BelizeXSDK;
+
+// Re-export mesh constants for convenience
+const { MeshNodeRole, MeshNodeType } = require('./meshNetwork');
+module.exports.MeshNodeRole = MeshNodeRole;
+module.exports.MeshNodeType = MeshNodeType;
