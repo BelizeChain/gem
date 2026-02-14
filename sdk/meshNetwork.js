@@ -9,7 +9,7 @@
 /**
  * Mesh node roles
  */
-export const MeshNodeRole = {
+const MeshNodeRole = {
     CLIENT: 'Client',
     ROUTER: 'Router',
     GATEWAY: 'Gateway',
@@ -20,7 +20,7 @@ export const MeshNodeRole = {
 /**
  * Mesh node types (Meshtastic hardware)
  */
-export const MeshNodeType = {
+const MeshNodeType = {
     T_BEAM: 'TBeam',
     HELTEC_V3: 'HeltecV3',
     RAK_WISBLOCK: 'RAKWisBlock',

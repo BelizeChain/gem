@@ -2,7 +2,12 @@
 **/target/
 *.wasm
 *.contract
+
+# Contract build artifacts (exclude from git, but allow SDK ABIs)
 *.json
+!sdk/package.json
+!sdk/package-lock.json
+!sdk/contracts/*.json
 
 # Build artifacts
 **/Cargo.lock
@@ -22,7 +27,6 @@ Thumbs.db
 node_modules/
 npm-debug.log
 yarn-error.log
-package-lock.json
 yarn.lock
 
 # Testing
