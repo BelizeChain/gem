@@ -1,0 +1,116 @@
+{
+  "source": {
+    "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "language": "ink! 5.0.0",
+    "compiler": "rustc 1.75.0"
+  },
+  "contract": {
+    "name": "faucet",
+    "version": "0.1.0",
+    "authors": ["BelizeChain Team"]
+  },
+  "spec": {
+    "constructors": [
+      {
+        "args": [
+          {
+            "label": "drip_amount",
+            "type": {
+              "displayName": ["Balance"],
+              "type": "u128"
+            }
+          },
+          {
+            "label": "cooldown_blocks",
+            "type": {
+              "displayName": ["u32"],
+              "type": "u32"
+            }
+          }
+        ],
+        "default": false,
+        "docs": ["Creates a new faucet"],
+        "label": "new",
+        "payable": false,
+        "returnType": {
+          "displayName": ["ink_primitives", "ConstructorResult"],
+          "type": "Result"
+        },
+        "selector": "0x9bae9d5e"
+      }
+    ],
+    "docs": ["Testnet token faucet"],
+    "environment": {
+      "accountId": {
+        "displayName": ["AccountId"],
+        "type": "AccountId"
+      },
+      "balance": {
+        "displayName": ["Balance"],
+        "type": "u128"
+      },
+      "blockNumber": {
+        "displayName": ["BlockNumber"],
+        "type": "u32"
+      },
+      "chainExtension": {
+        "displayName": ["ChainExtension"],
+        "type": "NoChainExtension"
+      },
+      "hash": {
+        "displayName": ["Hash"],
+        "type": "Hash"
+      },
+      "maxEventTopics": 4,
+      "timestamp": {
+        "displayName": ["Timestamp"],
+        "type": "u64"
+      }
+    },
+    "events": [],
+    "lang_error": {
+      "displayName": ["ink", "LangError"],
+      "type": "LangError"
+    },
+    "messages": [
+      {
+        "args": [],
+        "default": false,
+        "docs": ["Claims tokens from faucet"],
+        "label": "claim",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": ["Result"],
+          "type": "Result"
+        },
+        "selector": "0x4f8f37f8"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": ["Returns the drip amount"],
+        "label": "get_drip_amount",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": ["Balance"],
+          "type": "u128"
+        },
+        "selector": "0x1234abcd"
+      }
+    ]
+  },
+  "storage": {
+    "root": {
+      "layout": {
+        "struct": {
+          "fields": [],
+          "name": "Faucet"
+        }
+      },
+      "root_key": "0x00000000"
+    }
+  },
+  "types": []
+}

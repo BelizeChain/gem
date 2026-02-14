@@ -1,0 +1,124 @@
+{
+  "source": {
+    "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "language": "ink! 5.0.0",
+    "compiler": "rustc 1.75.0"
+  },
+  "contract": {
+    "name": "beli_nft",
+    "version": "0.1.0",
+    "authors": ["BelizeChain Team"]
+  },
+  "spec": {
+    "constructors": [
+      {
+        "args": [],
+        "default": false,
+        "docs": ["Creates a new BeliNFT contract"],
+        "label": "new",
+        "payable": false,
+        "returnType": {
+          "displayName": ["ink_primitives", "ConstructorResult"],
+          "type": "Result"
+        },
+        "selector": "0x9bae9d5e"
+      }
+    ],
+    "docs": ["PSP34 NFT collection implementation"],
+    "environment": {
+      "accountId": {
+        "displayName": ["AccountId"],
+        "type": "AccountId"
+      },
+      "balance": {
+        "displayName": ["Balance"],
+        "type": "u128"
+      },
+      "blockNumber": {
+        "displayName": ["BlockNumber"],
+        "type": "u32"
+      },
+      "chainExtension": {
+        "displayName": ["ChainExtension"],
+        "type": "NoChainExtension"
+      },
+      "hash": {
+        "displayName": ["Hash"],
+        "type": "Hash"
+      },
+      "maxEventTopics": 4,
+      "timestamp": {
+        "displayName": ["Timestamp"],
+        "type": "u64"
+      }
+    },
+    "events": [],
+    "lang_error": {
+      "displayName": ["ink", "LangError"],
+      "type": "LangError"
+    },
+    "messages": [
+      {
+        "args": [
+          {
+            "label": "to",
+            "type": {
+              "displayName": ["AccountId"],
+              "type": "AccountId"
+            }
+          },
+          {
+            "label": "uri",
+            "type": {
+              "displayName": ["String"],
+              "type": "String"
+            }
+          }
+        ],
+        "default": false,
+        "docs": ["Mints a new NFT"],
+        "label": "mint",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": ["Result"],
+          "type": "Result"
+        },
+        "selector": "0xcfdd9aa2"
+      },
+      {
+        "args": [
+          {
+            "label": "owner",
+            "type": {
+              "displayName": ["AccountId"],
+              "type": "AccountId"
+            }
+          }
+        ],
+        "default": false,
+        "docs": ["Returns the balance of owner"],
+        "label": "PSP34::balance_of",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": ["u32"],
+          "type": "u32"
+        },
+        "selector": "0xcde7e55f"
+      }
+    ]
+  },
+  "storage": {
+    "root": {
+      "layout": {
+        "struct": {
+          "fields": [],
+          "name": "BeliNFT"
+        }
+      },
+      "root_key": "0x00000000"
+    }
+  },
+  "types": []
+}

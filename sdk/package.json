@@ -1,0 +1,67 @@
+{
+  "name": "@belizechain/gem-sdk",
+  "version": "1.3.0",
+  "description": "JavaScript/TypeScript SDK for BelizeChain smart contracts (GEM ecosystem)",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{js,ts,json,md}\""
+  },
+  "keywords": [
+    "belizechain",
+    "blockchain",
+    "smart-contracts",
+    "ink",
+    "substrate",
+    "polkadot",
+    "dex",
+    "defi",
+    "web3",
+    "cryptocurrency"
+  ],
+  "author": "BelizeChain Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BelizeChain/gem.git",
+    "directory": "sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/BelizeChain/gem/issues"
+  },
+  "homepage": "https://github.com/BelizeChain/gem#readme",
+  "peerDependencies": {
+    "@polkadot/api": "^10.0.0 || ^11.0.0 || ^12.0.0 || ^13.0.0",
+    "@polkadot/api-contract": "^10.0.0 || ^11.0.0 || ^12.0.0 || ^13.0.0"
+  },
+  "dependencies": {
+    "@polkadot/keyring": "^13.2.1",
+    "@polkadot/util": "^13.2.1",
+    "@polkadot/util-crypto": "^13.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "belizex.js",
+    "belizex.d.ts",
+    "meshNetwork.js",
+    "meshNetwork.d.ts",
+    "privacy.js",
+    "privacy.d.ts",
+    "contracts/",
+    "examples/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}

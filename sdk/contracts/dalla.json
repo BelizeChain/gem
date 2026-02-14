@@ -1,0 +1,161 @@
+{
+  "source": {
+    "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "language": "ink! 5.0.0",
+    "compiler": "rustc 1.75.0",
+    "build_info": {
+      "build_mode": "Release",
+      "cargo_contract_version": "4.0.0",
+      "rust_toolchain": "stable-x86_64-unknown-linux-gnu",
+      "wasm_opt_settings": {
+        "keep_debug_symbols": false,
+        "optimization_passes": "Z"
+      }
+    }
+  },
+  "contract": {
+    "name": "dalla_token",
+    "version": "0.1.0",
+    "authors": ["BelizeChain Team"]
+  },
+  "spec": {
+    "constructors": [
+      {
+        "args": [
+          {
+            "label": "total_supply",
+            "type": {
+              "displayName": ["Balance"],
+              "type": "u128"
+            }
+          }
+        ],
+        "default": false,
+        "docs": ["Creates a new DALLA token contract"],
+        "label": "new",
+        "payable": false,
+        "returnType": {
+          "displayName": ["ink_primitives", "ConstructorResult"],
+          "type": "Result"
+        },
+        "selector": "0x9bae9d5e"
+      }
+    ],
+    "docs": ["PSP22 fungible token implementation - DALLA"],
+    "environment": {
+      "accountId": {
+        "displayName": ["AccountId"],
+        "type": "AccountId"
+      },
+      "balance": {
+        "displayName": ["Balance"],
+        "type": "u128"
+      },
+      "blockNumber": {
+        "displayName": ["BlockNumber"],
+        "type": "u32"
+      },
+      "chainExtension": {
+        "displayName": ["ChainExtension"],
+        "type": "NoChainExtension"
+      },
+      "hash": {
+        "displayName": ["Hash"],
+        "type": "Hash"
+      },
+      "maxEventTopics": 4,
+      "timestamp": {
+        "displayName": ["Timestamp"],
+        "type": "u64"
+      }
+    },
+    "events": [],
+    "lang_error": {
+      "displayName": ["ink", "LangError"],
+      "type": "LangError"
+    },
+    "messages": [
+      {
+        "args": [],
+        "default": false,
+        "docs": ["Returns the total token supply"],
+        "label": "PSP22::total_supply",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": ["Balance"],
+          "type": "u128"
+        },
+        "selector": "0x162df8c2"
+      },
+      {
+        "args": [
+          {
+            "label": "owner",
+            "type": {
+              "displayName": ["AccountId"],
+              "type": "AccountId"
+            }
+          }
+        ],
+        "default": false,
+        "docs": ["Returns the account balance"],
+        "label": "PSP22::balance_of",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": ["Balance"],
+          "type": "u128"
+        },
+        "selector": "0x6568ba36"
+      },
+      {
+        "args": [
+          {
+            "label": "to",
+            "type": {
+              "displayName": ["AccountId"],
+              "type": "AccountId"
+            }
+          },
+          {
+            "label": "value",
+            "type": {
+              "displayName": ["Balance"],
+              "type": "u128"
+            }
+          },
+          {
+            "label": "data",
+            "type": {
+              "displayName": ["Vec"],
+              "type": "Vec<u8>"
+            }
+          }
+        ],
+        "default": false,
+        "docs": ["Transfers tokens to recipient"],
+        "label": "PSP22::transfer",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": ["Result"],
+          "type": "Result"
+        },
+        "selector": "0xdb20f9f5"
+      }
+    ]
+  },
+  "storage": {
+    "root": {
+      "layout": {
+        "struct": {
+          "fields": [],
+          "name": "DallaToken"
+        }
+      },
+      "root_key": "0x00000000"
+    }
+  },
+  "types": []
+}
