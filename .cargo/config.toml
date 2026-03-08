@@ -1,0 +1,5 @@
+# Restrict WASM compilation to MVP feature set.
+# Rust 1.82+ enables bulk-memory ops by default, but the wasm-opt
+# bundled in cargo-contract 4.x cannot parse opcode 252 (memory.copy).
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-cpu=mvp"]

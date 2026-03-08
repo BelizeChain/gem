@@ -8,15 +8,15 @@ FROM rust:1.90-bookworm AS builder
 
 RUN rustup target add wasm32-unknown-unknown
 
-# Restrict to MVP WASM features — Rust 1.90 emits bulk-memory ops by default
-# that older wasm-opt (bundled in cargo-contract 4.x) cannot parse.
-ENV CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS="-C target-cpu=mvp"
 RUN cargo install cargo-contract --version 4.1.1 --locked
 
 WORKDIR /build
 
 # Copy workspace-level files
 COPY Cargo.toml rust-toolchain.toml ./
+
+# Copy cargo config (restricts WASM to MVP feature set)
+COPY .cargo/ .cargo/
 
 # Copy all contracts
 COPY dalla_token/ dalla_token/
@@ -29,7 +29,7 @@ COPY dex/ dex/
 COPY hello-belizechain/ hello-belizechain/
 
 # Build all contracts in release mode
-# (CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS is set above)
+# (.cargo/config.toml sets target-cpu=mvp to avoid wasm-opt opcode 252)
 RUN for contract in \
       dalla_token \
       beli_nft \
