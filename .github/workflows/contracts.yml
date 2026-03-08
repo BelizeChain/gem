@@ -140,11 +140,20 @@ jobs:
           cargo contract build --release
 
       - name: Check contract size
+        id: size-check
         run: |
-          # Extract the actual package name from Cargo.toml (handles dex/* where
-          # package name e.g. belizex_factory differs from directory name factory)
+          # Extract the actual package name from Cargo.toml
           CONTRACT_NAME=$(grep '^name' ${{ matrix.contract }}/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/' | tr '-' '_')
-          CONTRACT_SIZE=$(wc -c < ${{ matrix.contract }}/target/ink/${CONTRACT_NAME}.wasm)
+          # Find the .wasm file — handles both standalone contracts and
+          # workspace members (dex/*) where target/ is at the workspace root
+          WASM_FILE=$(find . -name "${CONTRACT_NAME}.wasm" -path "*/target/ink*" | head -1)
+          if [ -z "$WASM_FILE" ]; then
+            echo "❌ Could not find ${CONTRACT_NAME}.wasm"
+            exit 1
+          fi
+          INK_DIR=$(dirname "$WASM_FILE")
+          echo "ink_dir=$INK_DIR" >> $GITHUB_OUTPUT
+          CONTRACT_SIZE=$(wc -c < "$WASM_FILE")
           echo "Contract size: $CONTRACT_SIZE bytes"
           if [ $CONTRACT_SIZE -gt 131072 ]; then
             echo "⚠️ Warning: Contract exceeds 128 KB ($CONTRACT_SIZE bytes)"
@@ -164,9 +173,9 @@ jobs:
         with:
           name: ${{ steps.artifact-name.outputs.name }}
           path: |
-            ${{ matrix.contract }}/target/ink/*.wasm
-            ${{ matrix.contract }}/target/ink/*.contract
-            ${{ matrix.contract }}/target/ink/metadata.json
+            ${{ steps.size-check.outputs.ink_dir }}/*.wasm
+            ${{ steps.size-check.outputs.ink_dir }}/*.contract
+            ${{ steps.size-check.outputs.ink_dir }}/*.json
           retention-days: 7
 
   test:

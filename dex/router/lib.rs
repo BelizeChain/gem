@@ -5,7 +5,7 @@
 #[allow(clippy::too_many_arguments)]
 pub mod router {
     use ink::env::call::{build_call, ExecutionInput, Selector};
-    use ink::prelude::vec::Vec;
+    use ink::prelude::{vec, vec::Vec};
     use scale::{Decode, Encode};
 
     // ============================================================================
