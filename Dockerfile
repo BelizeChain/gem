@@ -4,11 +4,11 @@
 # ──────────────────────────────────────────────────────────
 
 # Stage 1: Build contracts
-FROM rust:1.81-bookworm AS builder
+FROM rust:1.90-bookworm AS builder
 
 RUN rustup target add wasm32-unknown-unknown
 
-RUN cargo install cargo-contract --version 4.1.1 --locked
+RUN cargo install cargo-contract --version 5.0.3 --locked
 
 WORKDIR /build
 
