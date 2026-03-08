@@ -92,7 +92,6 @@ jobs:
           - simple_dao
           - faucet
           - hello-belizechain
-          - access_control
           - psp37_multi_token
           - dex/factory
           - dex/pair
@@ -105,6 +104,9 @@ jobs:
         uses: dtolnay/rust-toolchain@1.90.0
         with:
           targets: wasm32-unknown-unknown
+
+      - name: Install binaryen (wasm-opt)
+        run: sudo apt-get update && sudo apt-get install -y binaryen
 
       - name: Cache cargo-contract binary
         id: cache-cargo-contract

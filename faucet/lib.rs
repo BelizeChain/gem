@@ -84,7 +84,7 @@ mod faucet {
             let current_block = self.env().block_number();
 
             // Check cooldown
-            if let Some(last) = self.last_claim.get(&caller) {
+            if let Some(last) = self.last_claim.get(caller) {
                 let blocks_since = current_block.saturating_sub(last);
                 if blocks_since < self.cooldown {
                     return Err(Error::TooSoon);
@@ -200,7 +200,7 @@ mod faucet {
         /// Get the last claim block for an account
         #[ink(message)]
         pub fn last_claim_block(&self, account: AccountId) -> Option<BlockNumber> {
-            self.last_claim.get(&account)
+            self.last_claim.get(account)
         }
 
         /// Check if an account can claim now
@@ -208,7 +208,7 @@ mod faucet {
         pub fn can_claim(&self, account: AccountId) -> bool {
             let current_block = self.env().block_number();
 
-            match self.last_claim.get(&account) {
+            match self.last_claim.get(account) {
                 Some(last) => {
                     let blocks_since = current_block.saturating_sub(last);
                     blocks_since >= self.cooldown
@@ -222,7 +222,7 @@ mod faucet {
         pub fn blocks_until_claim(&self, account: AccountId) -> u32 {
             let current_block = self.env().block_number();
 
-            match self.last_claim.get(&account) {
+            match self.last_claim.get(account) {
                 Some(last) => {
                     let blocks_since = current_block.saturating_sub(last);
                     if blocks_since >= self.cooldown {

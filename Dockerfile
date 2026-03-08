@@ -34,7 +34,6 @@ RUN for contract in \
       beli_nft \
       simple_dao \
       faucet \
-      access_control \
       psp37_multi_token \
       dex/factory \
       dex/pair \
@@ -63,7 +62,6 @@ COPY --from=builder /build/dalla_token/target/ink/ artifacts/dalla_token/
 COPY --from=builder /build/beli_nft/target/ink/ artifacts/beli_nft/
 COPY --from=builder /build/simple_dao/target/ink/ artifacts/simple_dao/
 COPY --from=builder /build/faucet/target/ink/ artifacts/faucet/
-COPY --from=builder /build/access_control/target/ink/ artifacts/access_control/
 COPY --from=builder /build/psp37_multi_token/target/ink/ artifacts/psp37_multi_token/
 COPY --from=builder /build/dex/factory/target/ink/ artifacts/dex_factory/
 COPY --from=builder /build/dex/pair/target/ink/ artifacts/dex_pair/

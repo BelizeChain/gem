@@ -128,11 +128,11 @@ mod hello_belizechain {
             self.counter = self.counter.checked_add(1).ok_or(Error::CounterOverflow)?;
 
             // Record visitor
-            let current_visits = self.visits.get(&caller).unwrap_or(0);
+            let current_visits = self.visits.get(caller).unwrap_or(0);
             let new_visits = current_visits
                 .checked_add(1)
                 .ok_or(Error::CounterOverflow)?;
-            self.visits.insert(&caller, &new_visits);
+            self.visits.insert(caller, &new_visits);
 
             self.env().emit_event(CounterIncremented {
                 from: caller,
@@ -156,7 +156,7 @@ mod hello_belizechain {
         /// Get the number of times an account has visited
         #[ink(message)]
         pub fn get_visits(&self, account: AccountId) -> u32 {
-            self.visits.get(&account).unwrap_or(0)
+            self.visits.get(account).unwrap_or(0)
         }
 
         /// Get the caller's visit count

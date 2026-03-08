@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 #[ink::contract]
+#[allow(clippy::too_many_arguments)]
 pub mod router {
     use ink::env::call::{build_call, ExecutionInput, Selector};
     use ink::prelude::vec::Vec;
@@ -253,8 +254,7 @@ pub mod router {
                 return Err(Error::InvalidPath);
             }
 
-            let mut amounts = Vec::new();
-            amounts.resize(path.len(), 0);
+            let mut amounts = vec![0; path.len()];
             amounts[path.len() - 1] = amount_out;
 
             for i in (1..path.len()).rev() {
@@ -317,6 +317,7 @@ pub mod router {
             self._token_transfer_from(token_b, self.env().caller(), pair, amount_b)?;
 
             // Call pair.mint(to) - placeholder for cross-contract call
+            let _to = to;
             let liquidity = 0; // TODO: Implement pair.mint() cross-contract call
 
             // Emit event
@@ -367,6 +368,7 @@ pub mod router {
             // In production,  would transfer pair LP tokens here
 
             // Call pair.burn(to) - placeholder for cross-contract call
+            let (_to, _liquidity, _pair) = (to, liquidity, pair);
             let (amount0, amount1) = (0, 0); // TODO: Implement pair.burn() cross-contract call
 
             // Sort amounts based on token order

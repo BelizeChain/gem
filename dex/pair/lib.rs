@@ -422,7 +422,7 @@ pub mod pair {
             let this_balance = self.balance_of(self.env().account_id());
             self.balances
                 .insert(self.env().account_id(), &(this_balance - liquidity));
-            self.total_supply = self.total_supply - liquidity;
+            self.total_supply -= liquidity;
 
             // Transfer tokens to recipient
             self._token_transfer(self.token0, to, amount0)?;
@@ -692,16 +692,16 @@ pub mod pair {
             if time_elapsed > 0 && self.reserve0 > 0 && self.reserve1 > 0 {
                 // Price0 = reserve1 / reserve0
                 self.price0_cumulative_last = self.price0_cumulative_last.saturating_add(
-                    (self.reserve1 as u128)
+                    self.reserve1
                         .saturating_mul(time_elapsed as u128)
-                        .saturating_div(self.reserve0 as u128),
+                        .saturating_div(self.reserve0),
                 );
 
                 // Price1 = reserve0 / reserve1
                 self.price1_cumulative_last = self.price1_cumulative_last.saturating_add(
-                    (self.reserve0 as u128)
+                    self.reserve0
                         .saturating_mul(time_elapsed as u128)
-                        .saturating_div(self.reserve1 as u128),
+                        .saturating_div(self.reserve1),
                 );
             }
 

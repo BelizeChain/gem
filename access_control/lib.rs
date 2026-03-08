@@ -47,8 +47,6 @@
 //! }
 //! ```
 
-use ink::prelude::vec::Vec;
-use ink::storage::Mapping;
 use scale::{Decode, Encode};
 
 // ============================================================================
@@ -80,7 +78,6 @@ pub type Result<T> = core::result::Result<T, AccessError>;
 
 pub mod ownable {
     use super::*;
-    use ink::env::DefaultEnvironment;
     use ink::primitives::AccountId;
 
     /// Storage for Ownable pattern
@@ -198,7 +195,7 @@ pub mod access_control {
     pub const UPGRADER_ROLE: RoleType = 4;
 
     /// Storage for AccessControl pattern
-    #[derive(Debug)]
+    #[derive(Debug, Default)]
     #[cfg_attr(
         feature = "std",
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
@@ -208,15 +205,6 @@ pub mod access_control {
         roles: Mapping<(RoleType, AccountId), ()>,
         /// Role admins: role => admin_role
         role_admins: Mapping<RoleType, RoleType>,
-    }
-
-    impl Default for AccessControlData {
-        fn default() -> Self {
-            Self {
-                roles: Mapping::default(),
-                role_admins: Mapping::default(),
-            }
-        }
     }
 
     /// Events for AccessControl

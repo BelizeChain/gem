@@ -131,6 +131,7 @@ mod psp37_multi_token {
     // Implementation
     // ============================================================================
 
+    #[allow(clippy::new_without_default)]
     impl Psp37MultiToken {
         // ========================================================================
         // Constructor
