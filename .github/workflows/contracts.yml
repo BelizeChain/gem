@@ -129,6 +129,14 @@ jobs:
           path: ${{ matrix.contract }}/target
           key: ${{ runner.os }}-${{ matrix.contract }}-${{ hashFiles(format('{0}/Cargo.lock', matrix.contract)) }}
 
+      - name: Configure WASM target for MVP
+        run: |
+          mkdir -p ~/.cargo
+          cat >> ~/.cargo/config.toml << 'EOF'
+          [target.wasm32-unknown-unknown]
+          rustflags = ["-C", "target-cpu=mvp"]
+          EOF
+
       - name: Build ${{ matrix.contract }} (debug)
         run: |
           cd ${{ matrix.contract }}

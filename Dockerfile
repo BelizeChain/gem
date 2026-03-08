@@ -10,13 +10,16 @@ RUN rustup target add wasm32-unknown-unknown
 
 RUN cargo install cargo-contract --version 4.1.1 --locked
 
+# Write WASM MVP config to CARGO_HOME so cargo-contract (which builds
+# in /tmp/) still picks it up — project-level .cargo/config.toml is
+# NOT visible from /tmp/.
+RUN printf '[target.wasm32-unknown-unknown]\nrustflags = ["-C", "target-cpu=mvp"]\n' \
+      >> "$CARGO_HOME/config.toml"
+
 WORKDIR /build
 
 # Copy workspace-level files
 COPY Cargo.toml rust-toolchain.toml ./
-
-# Copy cargo config (restricts WASM to MVP feature set)
-COPY .cargo/ .cargo/
 
 # Copy all contracts
 COPY dalla_token/ dalla_token/
