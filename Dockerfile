@@ -61,9 +61,9 @@ COPY --from=builder /build/beli_nft/target/ink/ artifacts/beli_nft/
 COPY --from=builder /build/simple_dao/target/ink/ artifacts/simple_dao/
 COPY --from=builder /build/faucet/target/ink/ artifacts/faucet/
 COPY --from=builder /build/psp37_multi_token/target/ink/ artifacts/psp37_multi_token/
-COPY --from=builder /build/dex/factory/target/ink/ artifacts/dex_factory/
-COPY --from=builder /build/dex/pair/target/ink/ artifacts/dex_pair/
-COPY --from=builder /build/dex/router/target/ink/ artifacts/dex_router/
+COPY --from=builder /build/dex/target/ink/belizex_factory/ artifacts/dex_factory/
+COPY --from=builder /build/dex/target/ink/belizex_pair/ artifacts/dex_pair/
+COPY --from=builder /build/dex/target/ink/belizex_router/ artifacts/dex_router/
 
 # Default: run the deployment script
 CMD ["node", "scripts/deploy.js"]
