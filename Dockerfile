@@ -4,17 +4,11 @@
 # ──────────────────────────────────────────────────────────
 
 # Stage 1: Build contracts
-FROM rust:1.90-bookworm AS builder
+FROM rust:1.81-bookworm AS builder
 
 RUN rustup target add wasm32-unknown-unknown
 
 RUN cargo install cargo-contract --version 4.1.1 --locked
-
-# Write WASM MVP config to CARGO_HOME so cargo-contract (which builds
-# in /tmp/) still picks it up — project-level .cargo/config.toml is
-# NOT visible from /tmp/.
-RUN printf '[target.wasm32-unknown-unknown]\nrustflags = ["-C", "target-cpu=mvp"]\n' \
-      >> "$CARGO_HOME/config.toml"
 
 WORKDIR /build
 

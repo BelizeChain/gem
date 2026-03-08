@@ -41,7 +41,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.90.0
+        uses: dtolnay/rust-toolchain@1.81.0
         with:
           targets: wasm32-unknown-unknown
           components: rustfmt, clippy
@@ -101,7 +101,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.90.0
+        uses: dtolnay/rust-toolchain@1.81.0
         with:
           targets: wasm32-unknown-unknown
 
@@ -128,14 +128,6 @@ jobs:
         with:
           path: ${{ matrix.contract }}/target
           key: ${{ runner.os }}-${{ matrix.contract }}-${{ hashFiles(format('{0}/Cargo.lock', matrix.contract)) }}
-
-      - name: Configure WASM target for MVP
-        run: |
-          mkdir -p ~/.cargo
-          cat >> ~/.cargo/config.toml << 'EOF'
-          [target.wasm32-unknown-unknown]
-          rustflags = ["-C", "target-cpu=mvp"]
-          EOF
 
       - name: Build ${{ matrix.contract }} (debug)
         run: |
@@ -200,7 +192,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.90.0
+        uses: dtolnay/rust-toolchain@1.81.0
         with:
           targets: wasm32-unknown-unknown
 
@@ -232,7 +224,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.90.0
+        uses: dtolnay/rust-toolchain@1.81.0
 
       - name: Download contract artifacts
         uses: actions/download-artifact@v4
