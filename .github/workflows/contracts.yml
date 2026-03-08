@@ -105,9 +105,6 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - name: Install binaryen (wasm-opt)
-        run: sudo apt-get update && sudo apt-get install -y binaryen
-
       - name: Cache cargo-contract binary
         id: cache-cargo-contract
         uses: actions/cache@v4
@@ -133,11 +130,15 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.contract }}-${{ hashFiles(format('{0}/Cargo.lock', matrix.contract)) }}
 
       - name: Build ${{ matrix.contract }} (debug)
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS: "-C target-cpu=mvp"
         run: |
           cd ${{ matrix.contract }}
           cargo contract build
 
       - name: Build ${{ matrix.contract }} (release)
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS: "-C target-cpu=mvp"
         run: |
           cd ${{ matrix.contract }}
           cargo contract build --release

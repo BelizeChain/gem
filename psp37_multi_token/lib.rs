@@ -445,7 +445,7 @@ mod psp37_multi_token {
 
             // Update balances
             self.balances
-                .insert((from, token_id), &(from_balance - value));
+                .insert((from, token_id), &(from_balance.saturating_sub(value)));
 
             let to_balance = self.balance_of(to, token_id);
             self.balances
@@ -494,7 +494,7 @@ mod psp37_multi_token {
                 }
 
                 self.balances
-                    .insert((from, *token_id), &(from_balance - *value));
+                    .insert((from, *token_id), &(from_balance.saturating_sub(*value)));
 
                 let to_balance = self.balance_of(to, *token_id);
                 self.balances
@@ -555,11 +555,11 @@ mod psp37_multi_token {
             }
 
             // Update balance
-            self.balances.insert((from, token_id), &(balance - amount));
+            self.balances.insert((from, token_id), &(balance.saturating_sub(amount)));
 
             // Update total supply
             let supply = self.total_supply(token_id);
-            self.total_supply.insert(token_id, &(supply - amount));
+            self.total_supply.insert(token_id, &(supply.saturating_sub(amount)));
 
             // Emit event
             self.env().emit_event(TransferSingle {

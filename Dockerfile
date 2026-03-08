@@ -6,11 +6,11 @@
 # Stage 1: Build contracts
 FROM rust:1.90-bookworm AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    binaryen \
-    && rm -rf /var/lib/apt/lists/*
-
 RUN rustup target add wasm32-unknown-unknown
+
+# Restrict to MVP WASM features — Rust 1.90 emits bulk-memory ops by default
+# that older wasm-opt (bundled in cargo-contract 4.x) cannot parse.
+ENV CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS="-C target-cpu=mvp"
 RUN cargo install cargo-contract --version 4.1.1 --locked
 
 WORKDIR /build
@@ -29,6 +29,7 @@ COPY dex/ dex/
 COPY hello-belizechain/ hello-belizechain/
 
 # Build all contracts in release mode
+# (CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS is set above)
 RUN for contract in \
       dalla_token \
       beli_nft \

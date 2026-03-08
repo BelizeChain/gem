@@ -385,8 +385,7 @@ mod simple_dao {
         }
 
         fn advance_block(blocks: u32) {
-            let current =
-                ink::env::block_number::<ink::env::DefaultEnvironment>();
+            let current = ink::env::block_number::<ink::env::DefaultEnvironment>();
             ink::env::test::set_block_number::<ink::env::DefaultEnvironment>(
                 current.saturating_add(blocks),
             );
