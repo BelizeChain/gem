@@ -141,10 +141,9 @@ jobs:
 
       - name: Check contract size
         run: |
-          # cargo-contract uses underscores in output filenames (matching Cargo package name)
-          # For nested paths like dex/factory, extract just the directory name
-          CONTRACT_DIR=$(basename "${{ matrix.contract }}")
-          CONTRACT_NAME=$(echo "${CONTRACT_DIR}" | tr '-' '_')
+          # Extract the actual package name from Cargo.toml (handles dex/* where
+          # package name e.g. belizex_factory differs from directory name factory)
+          CONTRACT_NAME=$(grep '^name' ${{ matrix.contract }}/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/' | tr '-' '_')
           CONTRACT_SIZE=$(wc -c < ${{ matrix.contract }}/target/ink/${CONTRACT_NAME}.wasm)
           echo "Contract size: $CONTRACT_SIZE bytes"
           if [ $CONTRACT_SIZE -gt 131072 ]; then
