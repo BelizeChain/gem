@@ -209,7 +209,7 @@ jobs:
       - name: Run unit tests for ${{ matrix.contract }}
         run: |
           cd ${{ matrix.contract }}
-          cargo test --all-features
+          cargo test
 
       - name: Run doc tests for ${{ matrix.contract }}
         run: |

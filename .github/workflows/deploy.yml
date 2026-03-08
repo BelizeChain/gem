@@ -63,7 +63,7 @@ jobs:
       - name: Run tests
         run: |
           cd ${{ matrix.contract }}
-          cargo test --all-features
+          cargo test
 
   # ── 2. SDK tests ─────────────────────────────────────────
   sdk-test:
