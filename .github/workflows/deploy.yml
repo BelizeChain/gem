@@ -1,0 +1,206 @@
+# ──────────────────────────────────────────────────────────
+# GEM Smart Contracts — CI/CD Pipeline
+# Trigger: push to main  ·  manual dispatch
+# Flow:    test → build → push ACR → deploy contracts to AKS
+# ──────────────────────────────────────────────────────────
+
+name: Deploy GEM Contracts
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: belizechainacr.azurecr.io
+  IMAGE_NAME: gem-deployer
+
+# Only one deploy at a time; cancel superseded runs
+concurrency:
+  group: deploy-gem-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 1. Build & test contracts ────────────────────────────
+  test:
+    name: 🧪 Contract Tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        contract:
+          - dalla_token
+          - beli_nft
+          - simple_dao
+          - faucet
+          - hello-belizechain
+          - access_control
+          - psp37_multi_token
+          - dex/factory
+          - dex/pair
+          - dex/router
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.90.0
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ matrix.contract }}/target
+          key: ${{ runner.os }}-${{ matrix.contract }}-test-${{ hashFiles(format('{0}/Cargo.lock', matrix.contract)) }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.contract }}-test-
+
+      - name: Run tests
+        run: |
+          cd ${{ matrix.contract }}
+          cargo test --all-features
+
+  # ── 2. SDK tests ─────────────────────────────────────────
+  sdk-test:
+    name: 🧪 SDK Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./sdk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: sdk/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  # ── 3. Build Docker image & push to ACR ──────────────────
+  build:
+    name: 🐳 Build & Push Image
+    needs: [test, sdk-test]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    continue-on-error: true
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to:   type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+  # ── 4. Deploy contracts to BelizeChain testnet ───────────
+  deploy:
+    name: 🚀 Deploy Contracts to Testnet (AKS)
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testnet
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+
+      - name: Create namespace (if needed)
+        run: kubectl create namespace belizechain --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy contract deployer job
+        run: |
+          cat <<'EOFK' | kubectl apply -f -
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: gem-deploy-${{ github.sha }}
+            namespace: belizechain
+            labels:
+              app: gem-deployer
+          spec:
+            backoffLimit: 2
+            ttlSecondsAfterFinished: 3600
+            template:
+              metadata:
+                labels:
+                  app: gem-deployer
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: gem-deployer
+                    image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+                    env:
+                      - name: BLOCKCHAIN_WS_URL
+                        value: "ws://belizechain-node.belizechain.svc.cluster.local:9944"
+                      - name: ENVIRONMENT
+                        value: "testnet"
+                    resources:
+                      requests:
+                        cpu: "250m"
+                        memory: "512Mi"
+                      limits:
+                        cpu: "500m"
+                        memory: "1Gi"
+          EOFK
+
+      - name: Wait for deployment job
+        run: |
+          kubectl wait --for=condition=complete \
+            job/gem-deploy-${{ github.sha }} \
+            -n belizechain \
+            --timeout=600s || true
+
+      - name: Show deployment logs
+        if: always()
+        run: |
+          kubectl logs job/gem-deploy-${{ github.sha }} -n belizechain --tail=100 || true
+
+      - name: Verify cluster state
+        run: |
+          kubectl get pods -n belizechain -o wide
+          kubectl get svc -n belizechain
