@@ -38,8 +38,8 @@ templates/
 .env.*
 !.env.example
 
-# Lock files (keep Cargo.lock for reproducibility, exclude package-lock)
-package-lock.json
+# Lock files
+# NOTE: package-lock.json is kept for reproducible npm ci builds
 yarn.lock
 
 # CI/CD

@@ -2,7 +2,7 @@
 
 **Version**: 1.0.0  
 **Inspired by**: Uniswap V2  
-**Platform**: BelizeChain GEM / ink! 5.0
+**Platform**: BelizeChain GEM / ink! 5.1.1
 
 ---
 

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Pinned ink! dependency to `5.1.1` across all crates; updated all documentation
+  headers, badge links, and code examples that previously referenced `5.0` or `4.0`
+  (resolves audit finding I16)
+
 ### Planned
 - Chain extensions for Nawal AI, Kinich Quantum, and Pakit Storage
 - Additional DeFi primitives (lending, staking, yield farming)

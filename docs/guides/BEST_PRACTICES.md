@@ -1,7 +1,7 @@
 # Best Practices for ink! Smart Contracts on BelizeChain 🎯
 
-**Version**: 1.0  
-**Platform**: BelizeChain GEM / ink! 4.0  
+**Version**: 2.0  
+**Platform**: BelizeChain GEM / ink! 5.1.1  
 **Target Audience**: ink! smart contract developers
 
 This guide covers best practices, design patterns, and optimization techniques for building secure, efficient, and maintainable smart contracts on BelizeChain.
@@ -64,7 +64,7 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-ink = { version = "5.0.0", default-features = false }
+ink = { version = "5.1.1", default-features = false }
 
 # Use workspace inheritance for consistency
 [workspace.package]
@@ -132,6 +132,43 @@ impl MyContract {
         // Mint logic
         Ok(())
     }
+}
+```
+
+### Choosing Between Ownable and AccessControl
+
+| Criterion | `Ownable` | `AccessControl` |
+|---|---|---|
+| Complexity | Low — single privileged account | Medium — roles with per-role admin |
+| Best for | Simple admin-only contracts | Multi-role DeFi, DAOs, protocol governance |
+| Ownership transfer | Two-step (`propose_ownership` / `accept_ownership`) | Grant/revoke via admin role |
+| Renounce protection | `confirm: bool` parameter required | `admin_count` guard prevents last-admin lockout |
+| Composability | Can be combined with `AccessControl` | Yes — mix both patterns in one contract |
+
+**Two-Step Ownership Transfer** (prevents accidental transfer to wrong address):
+
+```rust
+// Step 1: Propose new owner
+self.ownable.propose_ownership(self.env().caller(), new_owner)?;
+
+// Step 2: New owner must explicitly accept
+self.ownable.accept_ownership(self.env().caller())?;
+```
+
+**Safe Renounce** (requires explicit confirmation):
+
+```rust
+// confirm: true executes the renounce; confirm: false returns ConfirmationRequired error
+self.ownable.renounce_ownership(self.env().caller(), true)?;
+```
+
+**Pause/Unpause with Role-Based Authorization**:
+
+```rust
+#[ink(message)]
+pub fn pause(&mut self) -> Result<()> {
+    self.access_control.ensure_role(self.env().caller(), PAUSER_ROLE)?;
+    self.pausable.pause(self.env().caller())
 }
 ```
 
@@ -389,7 +426,34 @@ pub struct CompactData {
 }
 ```
 
-### 3. Clear Unused Storage
+### 3. GEM Storage Key Reference
+
+All GEM access-control structs derive storage layout automatically — **no explicit
+`#[ink(storage_key)]` annotations are used**. Keys are assigned deterministically by
+`StorageLayout` based on field declaration order.
+
+> ⚠️ **Upgrade Warning**: Never reorder, insert, or remove fields in these structs
+> between deployed versions. Doing so changes the auto-derived storage keys and will
+> **silently corrupt all stored state**. To add new fields, always append them at the
+> end of the struct.
+
+| Struct | Field | Type | Key Assignment |
+|---|---|---|---|
+| `OwnableData` | `owner` | `Option<AccountId>` | Auto — position 0 |
+| `OwnableData` | `pending_owner` | `Option<AccountId>` | Auto — position 1 |
+| `AccessControlData` | `roles` | `Mapping<(RoleType, AccountId), ()>` | Auto — position 0 |
+| `AccessControlData` | `role_admins` | `Mapping<RoleType, RoleType>` | Auto — position 1 |
+| `AccessControlData` | `admin_count` | `u32` | Auto — position 2 |
+| `PausableData` | `paused` | `bool` | Auto — position 0 |
+
+For contracts requiring **explicit, stable storage keys** (e.g., proxy upgrade patterns):
+
+```rust
+#[ink(storage_key = "0x...")]
+field_name: FieldType,
+```
+
+### 4. Clear Unused Storage
 
 **Free Storage When Done**:
 
@@ -747,6 +811,6 @@ pub fn store_metadata_on_dag(&self, data: Vec<u8>) -> Result<Hash> {
 
 ---
 
-**Last Updated**: February 14, 2026  
+**Last Updated**: March 12, 2026  
 **License**: MIT  
 **Maintained By**: BelizeChain Team

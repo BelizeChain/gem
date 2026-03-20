@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-#![allow(clippy::arithmetic_side_effects)]
 
 //! # Pair Contract
 //!
@@ -9,8 +8,12 @@
 //! - Liquidity provision (mint LP tokens)
 //! - Liquidity removal (burn LP tokens)
 //! - Token swaps with 0.3% fee
-//! - Price oracle (TWAP ready)
+//! - Price oracle (TWAP with UQ64.64 fixed-point)
 //! - Minimum liquidity lock
+//!
+//! ## Design Notes
+//! - Flash swaps are intentionally not supported (no callback mechanism).
+//!   This reduces the attack surface vs Uniswap V2 at the cost of flash loan utility.
 
 #[ink::contract]
 pub mod pair {
@@ -25,6 +28,9 @@ pub mod pair {
     /// Trading fee: 0.3% (represented as 3/1000)
     const FEE_NUMERATOR: u128 = 3;
     const FEE_DENOMINATOR: u128 = 1000;
+
+    /// Fixed-point shift for TWAP price encoding (UQ64.64)
+    const FIXED_POINT_SHIFT: u32 = 64;
 
     // ============================================================================
     // Storage
@@ -59,17 +65,17 @@ pub mod pair {
         /// Block timestamp of last reserve update (for TWAP oracle)
         block_timestamp_last: u64,
 
-        /// Cumulative price0 (for TWAP oracle)
+        /// Cumulative price0 (UQ64.64 fixed-point, wrapping overflow by design)
         price0_cumulative_last: u128,
 
-        /// Cumulative price1 (for TWAP oracle)
+        /// Cumulative price1 (UQ64.64 fixed-point, wrapping overflow by design)
         price1_cumulative_last: u128,
-
-        /// K value (reserve0 * reserve1) - must never decrease
-        k_last: u128,
 
         /// Reentrancy lock
         locked: bool,
+
+        /// Emergency pause flag
+        paused: bool,
     }
 
     // ============================================================================
@@ -167,6 +173,12 @@ pub mod pair {
         Locked,
         /// Transfer failed
         TransferFailed,
+        /// Caller is not authorized
+        NotAuthorized,
+        /// Cross-contract balance query failed
+        BalanceQueryFailed,
+        /// Contract is paused
+        ContractPaused,
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
@@ -195,13 +207,13 @@ pub mod pair {
                 block_timestamp_last: 0,
                 price0_cumulative_last: 0,
                 price1_cumulative_last: 0,
-                k_last: 0,
                 locked: false,
+                paused: false,
             }
         }
 
         // ========================================================================
-        // LP Token Functions (PSP22-like)
+        // LP Token Functions (PSP22-compliant)
         // ========================================================================
 
         /// Get LP token balance of account
@@ -216,14 +228,23 @@ pub mod pair {
             self.total_supply
         }
 
-        /// Transfer LP tokens
+        /// Transfer LP tokens (PSP22 compliant)
         #[ink(message)]
-        pub fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
+        pub fn transfer(
+            &mut self,
+            to: AccountId,
+            value: Balance,
+            _data: ink::prelude::vec::Vec<u8>,
+        ) -> Result<()> {
             let caller = self.env().caller();
             self._transfer(caller, to, value)
         }
 
         /// Approve spender for LP tokens
+        ///
+        /// NOTE: To mitigate the approval race condition, callers should first
+        /// set the allowance to 0 before setting it to a new value.
+        /// Alternatively, use `increase_allowance` / `decrease_allowance`.
         #[ink(message)]
         pub fn approve(&mut self, spender: AccountId, value: Balance) -> Result<()> {
             let caller = self.env().caller();
@@ -238,13 +259,56 @@ pub mod pair {
             Ok(())
         }
 
-        /// Transfer LP tokens from another account
+        /// Increase allowance atomically (race-condition safe)
+        #[ink(message)]
+        pub fn increase_allowance(
+            &mut self,
+            spender: AccountId,
+            delta: Balance,
+        ) -> Result<()> {
+            let caller = self.env().caller();
+            let current = self.allowances.get((caller, spender)).unwrap_or(0);
+            let new_allowance = current.checked_add(delta).ok_or(Error::Overflow)?;
+            self.allowances.insert((caller, spender), &new_allowance);
+
+            self.env().emit_event(Approval {
+                owner: caller,
+                spender,
+                value: new_allowance,
+            });
+
+            Ok(())
+        }
+
+        /// Decrease allowance atomically (race-condition safe)
+        #[ink(message)]
+        pub fn decrease_allowance(
+            &mut self,
+            spender: AccountId,
+            delta: Balance,
+        ) -> Result<()> {
+            let caller = self.env().caller();
+            let current = self.allowances.get((caller, spender)).unwrap_or(0);
+            let new_allowance = current.checked_sub(delta).ok_or(Error::InsufficientAllowance)?;
+            self.allowances.insert((caller, spender), &new_allowance);
+
+            self.env().emit_event(Approval {
+                owner: caller,
+                spender,
+                value: new_allowance,
+            });
+
+            Ok(())
+        }
+
+        /// Transfer LP tokens from another account (PSP22 compliant)
         #[ink(message)]
         pub fn transfer_from(
             &mut self,
             from: AccountId,
             to: AccountId,
             value: Balance,
+            _data: ink::prelude::vec::Vec<u8>,
         ) -> Result<()> {
             let caller = self.env().caller();
             let allowance = self.allowances.get((from, caller)).unwrap_or(0);
@@ -253,7 +317,8 @@ pub mod pair {
                 return Err(Error::InsufficientAllowance);
             }
 
-            self.allowances.insert((from, caller), &(allowance - value));
+            self.allowances
+                .insert((from, caller), &(allowance.checked_sub(value).ok_or(Error::Overflow)?));
             self._transfer(from, to, value)
         }
 
@@ -292,24 +357,29 @@ pub mod pair {
         /// - First liquidity provision must exceed MINIMUM_LIQUIDITY
         #[ink(message)]
         pub fn mint(&mut self, to: AccountId) -> Result<Balance> {
+            self.ensure_not_paused()?;
             self.ensure_not_locked()?;
             self.locked = true;
+            let result = self._mint_inner(to);
+            self.locked = false;
+            result
+        }
 
+        /// Internal mint logic (lock managed by caller)
+        fn _mint_inner(&mut self, to: AccountId) -> Result<Balance> {
             if to == AccountId::from([0u8; 32]) {
-                self.locked = false;
                 return Err(Error::InvalidTo);
             }
 
             let (reserve0, reserve1) = (self.reserve0, self.reserve1);
 
-            // Get actual token balances (caller must have transferred tokens first)
-            // In production, this would call token0.balance_of(self) and token1.balance_of(self)
-            // For now, we simulate this
-            let balance0 = reserve0; // TODO: Call token0 contract
-            let balance1 = reserve1; // TODO: Call token1 contract
+            // Get actual token balances via cross-contract calls
+            let this = self.env().account_id();
+            let balance0 = self._token_balance_of(self.token0, this)?;
+            let balance1 = self._token_balance_of(self.token1, this)?;
 
-            let amount0 = balance0.saturating_sub(reserve0);
-            let amount1 = balance1.saturating_sub(reserve1);
+            let amount0 = balance0.checked_sub(reserve0).ok_or(Error::Overflow)?;
+            let amount1 = balance1.checked_sub(reserve1).ok_or(Error::Overflow)?;
 
             let liquidity = if self.total_supply == 0 {
                 // First liquidity provision
@@ -317,7 +387,6 @@ pub mod pair {
                     Self::sqrt(amount0.checked_mul(amount1).ok_or(Error::Overflow)?);
 
                 if initial_liquidity <= MINIMUM_LIQUIDITY {
-                    self.locked = false;
                     return Err(Error::InsufficientLiquidityMinted);
                 }
 
@@ -326,7 +395,14 @@ pub mod pair {
                 self.balances.insert(zero_address, &MINIMUM_LIQUIDITY);
                 self.total_supply = MINIMUM_LIQUIDITY;
 
-                initial_liquidity - MINIMUM_LIQUIDITY
+                // Emit Transfer event for MINIMUM_LIQUIDITY mint
+                self.env().emit_event(Transfer {
+                    from: None,
+                    to: Some(zero_address),
+                    value: MINIMUM_LIQUIDITY,
+                });
+
+                initial_liquidity.checked_sub(MINIMUM_LIQUIDITY).ok_or(Error::Overflow)?
             } else {
                 // Subsequent liquidity provisions
                 let liquidity0 = amount0
@@ -350,15 +426,21 @@ pub mod pair {
             };
 
             if liquidity == 0 {
-                self.locked = false;
                 return Err(Error::InsufficientLiquidityMinted);
             }
 
             // Mint LP tokens
             let to_balance = self.balance_of(to);
             self.balances
-                .insert(to, &to_balance.saturating_add(liquidity));
-            self.total_supply = self.total_supply.saturating_add(liquidity);
+                .insert(to, &to_balance.checked_add(liquidity).ok_or(Error::Overflow)?);
+            self.total_supply = self.total_supply.checked_add(liquidity).ok_or(Error::Overflow)?;
+
+            // Emit Transfer event for LP token mint
+            self.env().emit_event(Transfer {
+                from: None,
+                to: Some(to),
+                value: liquidity,
+            });
 
             // Update reserves
             self._update(balance0, balance1)?;
@@ -370,7 +452,6 @@ pub mod pair {
                 liquidity,
             });
 
-            self.locked = false;
             Ok(liquidity)
         }
 
@@ -383,56 +464,73 @@ pub mod pair {
         /// (amount0, amount1) - Amounts of tokens returned
         #[ink(message)]
         pub fn burn(&mut self, to: AccountId) -> Result<(Balance, Balance)> {
+            self.ensure_not_paused()?;
             self.ensure_not_locked()?;
             self.locked = true;
+            let result = self._burn_inner(to);
+            self.locked = false;
+            result
+        }
 
+        /// Internal burn logic (lock managed by caller)
+        fn _burn_inner(&mut self, to: AccountId) -> Result<(Balance, Balance)> {
             if to == AccountId::from([0u8; 32]) {
-                self.locked = false;
                 return Err(Error::InvalidTo);
             }
 
-            let (reserve0, reserve1) = (self.reserve0, self.reserve1);
+            let this = self.env().account_id();
+
+            // Read actual token balances
+            let balance0 = self._token_balance_of(self.token0, this)?;
+            let balance1 = self._token_balance_of(self.token1, this)?;
 
             // Get LP tokens sent to this contract
-            let liquidity = self.balance_of(self.env().account_id());
+            let liquidity = self.balance_of(this);
 
             if liquidity == 0 {
-                self.locked = false;
                 return Err(Error::InsufficientLiquidityBurned);
             }
 
-            // Calculate amounts to return
+            // Calculate amounts to return (pro-rata based on actual balances)
             let amount0 = liquidity
-                .checked_mul(reserve0)
+                .checked_mul(balance0)
                 .ok_or(Error::Overflow)?
                 .checked_div(self.total_supply)
                 .ok_or(Error::InsufficientLiquidity)?;
 
             let amount1 = liquidity
-                .checked_mul(reserve1)
+                .checked_mul(balance1)
                 .ok_or(Error::Overflow)?
                 .checked_div(self.total_supply)
                 .ok_or(Error::InsufficientLiquidity)?;
 
             if amount0 == 0 || amount1 == 0 {
-                self.locked = false;
                 return Err(Error::InsufficientLiquidityBurned);
             }
 
-            // Burn LP tokens
-            let this_balance = self.balance_of(self.env().account_id());
-            self.balances
-                .insert(self.env().account_id(), &(this_balance - liquidity));
-            self.total_supply -= liquidity;
+            // Burn LP tokens (checked arithmetic)
+            let this_balance = self.balance_of(this);
+            self.balances.insert(
+                this,
+                &this_balance.checked_sub(liquidity).ok_or(Error::Overflow)?,
+            );
+            self.total_supply = self.total_supply.checked_sub(liquidity).ok_or(Error::Overflow)?;
+
+            // Emit Transfer event for LP token burn
+            self.env().emit_event(Transfer {
+                from: Some(this),
+                to: None,
+                value: liquidity,
+            });
 
             // Transfer tokens to recipient
             self._token_transfer(self.token0, to, amount0)?;
             self._token_transfer(self.token1, to, amount1)?;
 
-            // Update reserves
-            let balance0 = reserve0 - amount0;
-            let balance1 = reserve1 - amount1;
-            self._update(balance0, balance1)?;
+            // Read actual balances after transfers
+            let new_balance0 = self._token_balance_of(self.token0, this)?;
+            let new_balance1 = self._token_balance_of(self.token1, this)?;
+            self._update(new_balance0, new_balance1)?;
 
             self.env().emit_event(Burn {
                 sender: self.env().caller(),
@@ -442,7 +540,6 @@ pub mod pair {
                 liquidity,
             });
 
-            self.locked = false;
             Ok((amount0, amount1))
         }
 
@@ -464,23 +561,32 @@ pub mod pair {
             amount1_out: Balance,
             to: AccountId,
         ) -> Result<()> {
+            self.ensure_not_paused()?;
             self.ensure_not_locked()?;
             self.locked = true;
+            let result = self._swap_inner(amount0_out, amount1_out, to);
+            self.locked = false;
+            result
+        }
 
+        /// Internal swap logic (lock managed by caller)
+        fn _swap_inner(
+            &mut self,
+            amount0_out: Balance,
+            amount1_out: Balance,
+            to: AccountId,
+        ) -> Result<()> {
             if amount0_out == 0 && amount1_out == 0 {
-                self.locked = false;
                 return Err(Error::InsufficientOutputAmount);
             }
 
             if to == AccountId::from([0u8; 32]) {
-                self.locked = false;
                 return Err(Error::InvalidTo);
             }
 
             let (reserve0, reserve1) = (self.reserve0, self.reserve1);
 
             if amount0_out >= reserve0 || amount1_out >= reserve1 {
-                self.locked = false;
                 return Err(Error::InsufficientLiquidity);
             }
 
@@ -492,47 +598,55 @@ pub mod pair {
                 self._token_transfer(self.token1, to, amount1_out)?;
             }
 
-            // Get actual balances after transfer
-            let balance0 = reserve0.saturating_sub(amount0_out);
-            let balance1 = reserve1.saturating_sub(amount1_out);
+            // Get actual balances after transfer via cross-contract calls
+            let this = self.env().account_id();
+            let balance0 = self._token_balance_of(self.token0, this)?;
+            let balance1 = self._token_balance_of(self.token1, this)?;
 
             // Calculate amounts in (what user sent)
-            let amount0_in = if balance0 > reserve0.saturating_sub(amount0_out) {
-                balance0 - (reserve0 - amount0_out)
+            let amount0_in = if balance0 > reserve0.checked_sub(amount0_out).ok_or(Error::Overflow)? {
+                balance0.checked_sub(reserve0.checked_sub(amount0_out).ok_or(Error::Overflow)?).ok_or(Error::Overflow)?
             } else {
                 0
             };
 
-            let amount1_in = if balance1 > reserve1.saturating_sub(amount1_out) {
-                balance1 - (reserve1 - amount1_out)
+            let amount1_in = if balance1 > reserve1.checked_sub(amount1_out).ok_or(Error::Overflow)? {
+                balance1.checked_sub(reserve1.checked_sub(amount1_out).ok_or(Error::Overflow)?).ok_or(Error::Overflow)?
             } else {
                 0
             };
 
             if amount0_in == 0 && amount1_in == 0 {
-                self.locked = false;
                 return Err(Error::InsufficientInputAmount);
             }
 
-            // Verify K-value (with 0.3% fee)
+            // Verify K-value (with 0.3% fee) using U256 to prevent overflow
             let balance0_adjusted = balance0
-                .saturating_mul(1000)
-                .saturating_sub(amount0_in.saturating_mul(FEE_NUMERATOR));
-
-            let balance1_adjusted = balance1
-                .saturating_mul(1000)
-                .saturating_sub(amount1_in.saturating_mul(FEE_NUMERATOR));
-
-            let k_new = balance0_adjusted
-                .checked_mul(balance1_adjusted)
+                .checked_mul(1000)
+                .ok_or(Error::Overflow)?
+                .checked_sub(amount0_in.checked_mul(FEE_NUMERATOR).ok_or(Error::Overflow)?)
                 .ok_or(Error::Overflow)?;
 
-            let k_old = reserve0
-                .saturating_mul(reserve1)
-                .saturating_mul(1000 * 1000);
+            let balance1_adjusted = balance1
+                .checked_mul(1000)
+                .ok_or(Error::Overflow)?
+                .checked_sub(amount1_in.checked_mul(FEE_NUMERATOR).ok_or(Error::Overflow)?)
+                .ok_or(Error::Overflow)?;
 
-            if k_new < k_old {
-                self.locked = false;
+            // Use U256 multiplication to prevent overflow in invariant check
+            let (k_new_hi, k_new_lo) = Self::mul_u256(balance0_adjusted, balance1_adjusted);
+
+            let reserve0_scaled = reserve0
+                .checked_mul(1000)
+                .ok_or(Error::Overflow)?;
+            let reserve1_scaled = reserve1
+                .checked_mul(1000)
+                .ok_or(Error::Overflow)?;
+
+            let (k_old_hi, k_old_lo) = Self::mul_u256(reserve0_scaled, reserve1_scaled);
+
+            // Compare k_new >= k_old using 256-bit comparison
+            if k_new_hi < k_old_hi || (k_new_hi == k_old_hi && k_new_lo < k_old_lo) {
                 return Err(Error::KValueDecreased);
             }
 
@@ -548,7 +662,6 @@ pub mod pair {
                 to,
             });
 
-            self.locked = false;
             Ok(())
         }
 
@@ -557,10 +670,10 @@ pub mod pair {
         pub fn sync(&mut self) -> Result<()> {
             self.ensure_not_locked()?;
 
-            // Get actual balances
-            // TODO: Call token contracts
-            let balance0 = self.reserve0;
-            let balance1 = self.reserve1;
+            // Get actual balances via cross-contract calls
+            let this = self.env().account_id();
+            let balance0 = self._token_balance_of(self.token0, this)?;
+            let balance1 = self._token_balance_of(self.token1, this)?;
 
             self._update(balance0, balance1)?;
             Ok(())
@@ -587,15 +700,17 @@ pub mod pair {
             }
 
             // Apply 0.3% fee
-            let amount_in_with_fee = amount_in.saturating_mul(FEE_DENOMINATOR - FEE_NUMERATOR);
+            let amount_in_with_fee = amount_in.checked_mul(FEE_DENOMINATOR.checked_sub(FEE_NUMERATOR).ok_or(Error::Overflow)?).ok_or(Error::Overflow)?;
 
             let numerator = amount_in_with_fee
                 .checked_mul(reserve_out)
                 .ok_or(Error::Overflow)?;
 
             let denominator = reserve_in
-                .saturating_mul(FEE_DENOMINATOR)
-                .saturating_add(amount_in_with_fee);
+                .checked_mul(FEE_DENOMINATOR)
+                .ok_or(Error::Overflow)?
+                .checked_add(amount_in_with_fee)
+                .ok_or(Error::Overflow)?;
 
             let amount_out = numerator
                 .checked_div(denominator)
@@ -623,18 +738,39 @@ pub mod pair {
             let numerator = reserve_in
                 .checked_mul(amount_out)
                 .ok_or(Error::Overflow)?
-                .saturating_mul(FEE_DENOMINATOR);
+                .checked_mul(FEE_DENOMINATOR)
+                .ok_or(Error::Overflow)?;
 
             let denominator = reserve_out
-                .saturating_sub(amount_out)
-                .saturating_mul(FEE_DENOMINATOR - FEE_NUMERATOR);
+                .checked_sub(amount_out)
+                .ok_or(Error::Overflow)?
+                .checked_mul(FEE_DENOMINATOR.checked_sub(FEE_NUMERATOR).ok_or(Error::Overflow)?)
+                .ok_or(Error::Overflow)?;
 
             let amount_in = numerator
                 .checked_div(denominator)
                 .ok_or(Error::InsufficientLiquidity)?
-                .saturating_add(1); // Round up
+                .checked_add(1)
+                .ok_or(Error::Overflow)?; // Round up
 
             Ok(amount_in)
+        }
+
+        /// Upgrades the contract code hash (factory only)
+        ///
+        /// Allows the pair contract to be upgraded to a new implementation
+        /// while preserving storage state. Only the factory that created
+        /// this pair can trigger upgrades.
+        #[ink(message)]
+        pub fn set_code_hash(&mut self, new_code_hash: Hash) -> Result<()> {
+            let caller = self.env().caller();
+            if caller != self.factory {
+                return Err(Error::NotAuthorized);
+            }
+
+            ink::env::set_code_hash::<Environment>(&new_code_hash)
+                .map_err(|_| Error::NotAuthorized)?;
+            Ok(())
         }
 
         // ========================================================================
@@ -644,17 +780,24 @@ pub mod pair {
         /// Transfer tokens via PSP22 cross-contract call
         ///
         /// Calls the `transfer` method on a PSP22 token contract
-        fn _token_transfer(&self, token: AccountId, to: AccountId, amount: Balance) -> Result<()> {
+        fn _token_transfer(
+            &self,
+            token: AccountId,
+            to: AccountId,
+            amount: Balance,
+        ) -> Result<()> {
             // PSP22::transfer selector is 0xdb20f9f5
             let selector = [0xdb, 0x20, 0xf9, 0xf5];
 
-            // Build cross-contract call
+            // Build cross-contract call with empty data (PSP22 compliance)
+            let data: ink::prelude::vec::Vec<u8> = ink::prelude::vec::Vec::new();
             let result = build_call::<Environment>()
                 .call(token)
                 .exec_input(
                     ExecutionInput::new(Selector::new(selector))
                         .push_arg(to)
-                        .push_arg(amount),
+                        .push_arg(amount)
+                        .push_arg(data),
                 )
                 .returns::<core::result::Result<(), ink::prelude::vec::Vec<u8>>>()
                 .try_invoke();
@@ -667,43 +810,54 @@ pub mod pair {
 
         /// Get token balance via PSP22 cross-contract call
         ///
-        /// Calls the `balance_of` method on a PSP22 token contract
-        fn _token_balance_of(&self, token: AccountId, account: AccountId) -> Balance {
+        /// Calls the `balance_of` method on a PSP22 token contract.
+        /// Returns `Err(BalanceQueryFailed)` if the cross-contract call fails.
+        fn _token_balance_of(
+            &self,
+            token: AccountId,
+            account: AccountId,
+        ) -> Result<Balance> {
             // PSP22::balance_of selector is 0x65682523
             let selector = [0x65, 0x68, 0x25, 0x23];
 
             let result = build_call::<Environment>()
                 .call(token)
-                .exec_input(ExecutionInput::new(Selector::new(selector)).push_arg(account))
+                .exec_input(
+                    ExecutionInput::new(Selector::new(selector)).push_arg(account),
+                )
                 .returns::<Balance>()
                 .try_invoke();
 
             match result {
-                Ok(Ok(balance)) => balance,
-                _ => 0,
+                Ok(Ok(balance)) => Ok(balance),
+                _ => Err(Error::BalanceQueryFailed),
             }
         }
 
-        /// Update reserves and price accumulators
+        /// Update reserves and TWAP price accumulators
+        ///
+        /// TWAP prices are encoded in UQ64.64 fixed-point and use wrapping
+        /// arithmetic (designed to overflow). Consumers should subtract two
+        /// readings and divide by elapsed time: `(acc_now - acc_before) / dt`.
         fn _update(&mut self, balance0: Balance, balance1: Balance) -> Result<()> {
-            // Update price oracle (TWAP)
+            // Update price oracle (TWAP with UQ64.64 fixed-point, wrapping overflow)
             let block_timestamp = self.env().block_timestamp();
-            let time_elapsed = block_timestamp.saturating_sub(self.block_timestamp_last);
+            let time_elapsed = block_timestamp.wrapping_sub(self.block_timestamp_last);
 
             if time_elapsed > 0 && self.reserve0 > 0 && self.reserve1 > 0 {
-                // Price0 = reserve1 / reserve0
-                self.price0_cumulative_last = self.price0_cumulative_last.saturating_add(
-                    self.reserve1
-                        .saturating_mul(time_elapsed as u128)
-                        .saturating_div(self.reserve0),
-                );
+                // Price0 = reserve1 / reserve0 encoded as UQ64.64
+                let price0 = (self.reserve1 << FIXED_POINT_SHIFT)
+                    .wrapping_div(self.reserve0);
+                self.price0_cumulative_last = self
+                    .price0_cumulative_last
+                    .wrapping_add(price0.wrapping_mul(time_elapsed as u128));
 
-                // Price1 = reserve0 / reserve1
-                self.price1_cumulative_last = self.price1_cumulative_last.saturating_add(
-                    self.reserve0
-                        .saturating_mul(time_elapsed as u128)
-                        .saturating_div(self.reserve1),
-                );
+                // Price1 = reserve0 / reserve1 encoded as UQ64.64
+                let price1 = (self.reserve0 << FIXED_POINT_SHIFT)
+                    .wrapping_div(self.reserve1);
+                self.price1_cumulative_last = self
+                    .price1_cumulative_last
+                    .wrapping_add(price1.wrapping_mul(time_elapsed as u128));
             }
 
             self.reserve0 = balance0;
@@ -718,8 +872,13 @@ pub mod pair {
             Ok(())
         }
 
-        /// Transfer LP tokens
-        fn _transfer(&mut self, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
+        /// Transfer LP tokens (internal)
+        fn _transfer(
+            &mut self,
+            from: AccountId,
+            to: AccountId,
+            value: Balance,
+        ) -> Result<()> {
             if to == AccountId::from([0u8; 32]) {
                 return Err(Error::ZeroAddress);
             }
@@ -729,10 +888,12 @@ pub mod pair {
                 return Err(Error::InsufficientBalance);
             }
 
-            self.balances.insert(from, &(from_balance - value));
+            self.balances
+                .insert(from, &from_balance.checked_sub(value).ok_or(Error::Overflow)?);
 
             let to_balance = self.balance_of(to);
-            self.balances.insert(to, &to_balance.saturating_add(value));
+            self.balances
+                .insert(to, &to_balance.checked_add(value).ok_or(Error::Overflow)?);
 
             self.env().emit_event(Transfer {
                 from: Some(from),
@@ -750,6 +911,63 @@ pub mod pair {
             } else {
                 Ok(())
             }
+        }
+
+        /// Ensure contract is not paused
+        fn ensure_not_paused(&self) -> Result<()> {
+            if self.paused {
+                Err(Error::ContractPaused)
+            } else {
+                Ok(())
+            }
+        }
+
+        /// Pause the contract (factory only)
+        #[ink(message)]
+        pub fn pause(&mut self) -> Result<()> {
+            if self.env().caller() != self.factory {
+                return Err(Error::NotAuthorized);
+            }
+            self.paused = true;
+            Ok(())
+        }
+
+        /// Unpause the contract (factory only)
+        #[ink(message)]
+        pub fn unpause(&mut self) -> Result<()> {
+            if self.env().caller() != self.factory {
+                return Err(Error::NotAuthorized);
+            }
+            self.paused = false;
+            Ok(())
+        }
+
+        /// Returns whether the contract is paused
+        #[ink(message)]
+        pub fn is_paused(&self) -> bool {
+            self.paused
+        }
+
+        /// Multiply two u128 values and return a 256-bit result as (hi, lo).
+        ///
+        /// Used for invariant check to prevent overflow with large reserves.
+        fn mul_u256(a: u128, b: u128) -> (u128, u128) {
+            let a_lo = a & 0xFFFF_FFFF_FFFF_FFFF_u128;
+            let a_hi = a >> 64;
+            let b_lo = b & 0xFFFF_FFFF_FFFF_FFFF_u128;
+            let b_hi = b >> 64;
+
+            let lo_lo = a_lo * b_lo;
+            let hi_lo = a_hi * b_lo;
+            let lo_hi = a_lo * b_hi;
+            let hi_hi = a_hi * b_hi;
+
+            let mid = (lo_lo >> 64) + (hi_lo & 0xFFFF_FFFF_FFFF_FFFF_u128) + (lo_hi & 0xFFFF_FFFF_FFFF_FFFF_u128);
+
+            let lo = (lo_lo & 0xFFFF_FFFF_FFFF_FFFF_u128) | ((mid & 0xFFFF_FFFF_FFFF_FFFF_u128) << 64);
+            let hi = hi_hi + (hi_lo >> 64) + (lo_hi >> 64) + (mid >> 64);
+
+            (hi, lo)
         }
 
         /// Integer square root (Babylonian method)
@@ -779,7 +997,8 @@ pub mod pair {
         use super::*;
 
         fn create_tokens() -> (AccountId, AccountId) {
-            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let accounts =
+                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             (accounts.bob, accounts.charlie)
         }
 
@@ -811,8 +1030,6 @@ pub mod pair {
             let pair = Pair::new(token0, token1);
 
             // Swap 100 tokens in pool with 1000 reserves each
-            // Amount out = (100 * 997 * 1000) / (1000 * 1000 + 100 * 997)
-            // = 99700000 / 1099700 ≈ 90.67
             let amount_out = pair.get_amount_out(100, 1000, 1000).unwrap();
             assert_eq!(amount_out, 90); // ~90 tokens out (with 0.3% fee)
         }
@@ -826,6 +1043,219 @@ pub mod pair {
             let amount_in = pair.get_amount_in(90, 1000, 1000).unwrap();
             assert!(amount_in > 90); // Need more than 90 due to fee
             assert!(amount_in <= 100); // Approximately 100 tokens needed
+        }
+
+        #[ink::test]
+        fn mul_u256_works() {
+            // Small values
+            let (hi, lo) = Pair::mul_u256(10, 20);
+            assert_eq!(hi, 0);
+            assert_eq!(lo, 200);
+
+            // Values that would overflow u128
+            let a: u128 = u128::MAX / 2;
+            let b: u128 = 4;
+            let (hi, _) = Pair::mul_u256(a, b);
+            assert!(hi > 0); // Must overflow into hi
+
+            // Identity
+            let (hi, lo) = Pair::mul_u256(1, u128::MAX);
+            assert_eq!(hi, 0);
+            assert_eq!(lo, u128::MAX);
+
+            // Zero
+            let (hi, lo) = Pair::mul_u256(0, u128::MAX);
+            assert_eq!(hi, 0);
+            assert_eq!(lo, 0);
+
+            // Symmetry
+            let (hi_a, lo_a) = Pair::mul_u256(12345, 67890);
+            let (hi_b, lo_b) = Pair::mul_u256(67890, 12345);
+            assert_eq!(hi_a, hi_b);
+            assert_eq!(lo_a, lo_b);
+        }
+
+        #[ink::test]
+        fn mul_u256_large_values() {
+            // Two large values that would definitely overflow u128
+            // 10^18 * 10^18 = 10^36 fits in u128 (max ~3.4e38)
+            let a: u128 = 1_000_000_000_000_000_000; // 10^18
+            let b: u128 = 1_000_000_000_000_000_000; // 10^18
+            let (hi, lo) = Pair::mul_u256(a, b);
+            assert_eq!(hi, 0);
+            assert_eq!(lo, a * b);
+
+            // 10^20 * 10^20 = 10^40 overflows u128(max ~3.4e38)
+            let c: u128 = 100_000_000_000_000_000_000; // 10^20
+            let (hi2, _lo2) = Pair::mul_u256(c, c);
+            assert!(hi2 > 0);
+
+            // MAX * MAX
+            let (hi, lo) = Pair::mul_u256(u128::MAX, u128::MAX);
+            // u128::MAX * u128::MAX = (2^128 - 1)^2 = 2^256 - 2^129 + 1
+            assert_eq!(lo, 1);
+            assert_eq!(hi, u128::MAX - 1);
+        }
+
+        #[ink::test]
+        fn increase_decrease_allowance_works() {
+            let (token0, token1) = create_tokens();
+            let mut pair = Pair::new(token0, token1);
+            let accounts =
+                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+
+            // Increase allowance
+            pair.increase_allowance(accounts.bob, 100).unwrap();
+            assert_eq!(pair.allowance(accounts.alice, accounts.bob), 100);
+
+            // Increase again
+            pair.increase_allowance(accounts.bob, 50).unwrap();
+            assert_eq!(pair.allowance(accounts.alice, accounts.bob), 150);
+
+            // Decrease
+            pair.decrease_allowance(accounts.bob, 30).unwrap();
+            assert_eq!(pair.allowance(accounts.alice, accounts.bob), 120);
+
+            // Decrease more than current should fail
+            let result = pair.decrease_allowance(accounts.bob, 200);
+            assert_eq!(result, Err(Error::InsufficientAllowance));
+        }
+
+        #[ink::test]
+        fn transfer_to_zero_address_fails() {
+            let (token0, token1) = create_tokens();
+            let mut pair = Pair::new(token0, token1);
+            let zero = AccountId::from([0u8; 32]);
+
+            let result =
+                pair.transfer(zero, 100, ink::prelude::vec::Vec::new());
+            assert_eq!(result, Err(Error::ZeroAddress));
+        }
+
+        #[ink::test]
+        fn transfer_insufficient_balance_fails() {
+            let (token0, token1) = create_tokens();
+            let mut pair = Pair::new(token0, token1);
+            let accounts =
+                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+
+            let result = pair.transfer(
+                accounts.bob,
+                100,
+                ink::prelude::vec::Vec::new(),
+            );
+            assert_eq!(result, Err(Error::InsufficientBalance));
+        }
+
+        #[ink::test]
+        fn approve_and_allowance_works() {
+            let (token0, token1) = create_tokens();
+            let mut pair = Pair::new(token0, token1);
+            let accounts =
+                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+
+            pair.approve(accounts.bob, 500).unwrap();
+            assert_eq!(pair.allowance(accounts.alice, accounts.bob), 500);
+
+            // Overwrite
+            pair.approve(accounts.bob, 200).unwrap();
+            assert_eq!(pair.allowance(accounts.alice, accounts.bob), 200);
+        }
+
+        #[ink::test]
+        fn transfer_from_insufficient_allowance_fails() {
+            let (token0, token1) = create_tokens();
+            let mut pair = Pair::new(token0, token1);
+            let accounts =
+                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+
+            let result = pair.transfer_from(
+                accounts.alice,
+                accounts.bob,
+                100,
+                ink::prelude::vec::Vec::new(),
+            );
+            assert_eq!(result, Err(Error::InsufficientAllowance));
+        }
+
+        #[ink::test]
+        fn get_amount_out_zero_input_fails() {
+            let (token0, token1) = create_tokens();
+            let pair = Pair::new(token0, token1);
+
+            let result = pair.get_amount_out(0, 1000, 1000);
+            assert_eq!(result, Err(Error::InsufficientInputAmount));
+        }
+
+        #[ink::test]
+        fn get_amount_out_zero_reserves_fails() {
+            let (token0, token1) = create_tokens();
+            let pair = Pair::new(token0, token1);
+
+            assert_eq!(
+                pair.get_amount_out(100, 0, 1000),
+                Err(Error::InsufficientLiquidity)
+            );
+            assert_eq!(
+                pair.get_amount_out(100, 1000, 0),
+                Err(Error::InsufficientLiquidity)
+            );
+        }
+
+        #[ink::test]
+        fn get_amount_in_zero_output_fails() {
+            let (token0, token1) = create_tokens();
+            let pair = Pair::new(token0, token1);
+
+            let result = pair.get_amount_in(0, 1000, 1000);
+            assert_eq!(result, Err(Error::InsufficientOutputAmount));
+        }
+
+        #[ink::test]
+        fn get_amount_in_zero_reserves_fails() {
+            let (token0, token1) = create_tokens();
+            let pair = Pair::new(token0, token1);
+
+            assert_eq!(
+                pair.get_amount_in(100, 0, 1000),
+                Err(Error::InsufficientLiquidity)
+            );
+            assert_eq!(
+                pair.get_amount_in(100, 1000, 0),
+                Err(Error::InsufficientLiquidity)
+            );
+        }
+
+        #[ink::test]
+        fn get_amount_in_output_exceeds_reserve_fails() {
+            let (token0, token1) = create_tokens();
+            let pair = Pair::new(token0, token1);
+
+            assert_eq!(
+                pair.get_amount_in(1001, 1000, 1000),
+                Err(Error::InsufficientLiquidity)
+            );
+        }
+
+        #[ink::test]
+        fn get_reserves_initially_zero() {
+            let (token0, token1) = create_tokens();
+            let pair = Pair::new(token0, token1);
+
+            let (r0, r1, ts) = pair.get_reserves();
+            assert_eq!(r0, 0);
+            assert_eq!(r1, 0);
+            assert_eq!(ts, 0);
+        }
+
+        #[ink::test]
+        fn balance_of_returns_zero_for_unknown() {
+            let (token0, token1) = create_tokens();
+            let pair = Pair::new(token0, token1);
+            let accounts =
+                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+
+            assert_eq!(pair.balance_of(accounts.django), 0);
         }
     }
 }

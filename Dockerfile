@@ -14,6 +14,7 @@ WORKDIR /build
 
 # Copy workspace-level files
 COPY Cargo.toml rust-toolchain.toml ./
+COPY .cargo/ .cargo/
 
 # Copy all contracts
 COPY dalla_token/ dalla_token/
@@ -66,4 +67,6 @@ COPY --from=builder /build/dex/target/ink/belizex_pair/ artifacts/dex_pair/
 COPY --from=builder /build/dex/target/ink/belizex_router/ artifacts/dex_router/
 
 # Default: run the deployment script
+# Inside Docker, artifacts are at /app/artifacts/<name>/
+# BLOCKCHAIN_WS_URL env var is set by the K8s Job manifest
 CMD ["node", "scripts/deploy.js"]

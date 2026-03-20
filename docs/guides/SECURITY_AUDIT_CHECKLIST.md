@@ -1,8 +1,8 @@
 # Security Audit Checklist for ink! Smart Contracts 🔒
 
-**Version**: 1.0  
-**Last Updated**: February 14, 2026  
-**Platform**: BelizeChain GEM / ink! 4.0  
+**Version**: 2.0  
+**Last Updated**: March 12, 2026  
+**Platform**: BelizeChain GEM / ink! 5.1.1  
 
 This comprehensive checklist covers security best practices for auditing ink! smart contracts on BelizeChain. Use this before deploying contracts to production.
 

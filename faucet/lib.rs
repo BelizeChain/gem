@@ -15,6 +15,8 @@ mod faucet {
         cooldown: u32,
         /// Contract owner who can refill and adjust settings
         owner: AccountId,
+        /// Pending owner for two-step ownership transfer
+        pending_owner: Option<AccountId>,
         /// Total tokens claimed
         total_claimed: Balance,
         /// Total number of claims
@@ -33,6 +35,14 @@ mod faucet {
         NotOwner,
         /// Transfer failed
         TransferFailed,
+        /// Zero address provided
+        ZeroAddress,
+        /// Code hash update failed
+        CodeHashUpdateFailed,
+        /// No pending ownership transfer
+        NoPendingOwner,
+        /// Caller is not the pending owner
+        NotPendingOwner,
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
@@ -59,6 +69,28 @@ mod faucet {
         cooldown: u32,
     }
 
+    #[ink(event)]
+    pub struct OwnershipProposed {
+        #[ink(topic)]
+        current_owner: AccountId,
+        #[ink(topic)]
+        proposed_owner: AccountId,
+    }
+
+    #[ink(event)]
+    pub struct OwnershipTransferred {
+        #[ink(topic)]
+        previous_owner: AccountId,
+        #[ink(topic)]
+        new_owner: AccountId,
+    }
+
+    #[ink(event)]
+    pub struct CodeHashUpdated {
+        #[ink(topic)]
+        new_code_hash: Hash,
+    }
+
     impl Faucet {
         /// Create a new faucet contract
         ///
@@ -72,6 +104,7 @@ mod faucet {
                 drip_amount,
                 cooldown,
                 owner: Self::env().caller(),
+                pending_owner: None,
                 total_claimed: 0,
                 claim_count: 0,
             }
@@ -156,11 +189,36 @@ mod faucet {
             Ok(())
         }
 
-        /// Transfer ownership (owner only)
+        /// Propose ownership transfer (owner only, step 1 of two-step)
         #[ink(message)]
         pub fn transfer_ownership(&mut self, new_owner: AccountId) -> Result<()> {
             self.ensure_owner()?;
-            self.owner = new_owner;
+            if new_owner == AccountId::from([0u8; 32]) {
+                return Err(Error::ZeroAddress);
+            }
+            self.pending_owner = Some(new_owner);
+            self.env().emit_event(OwnershipProposed {
+                current_owner: self.owner,
+                proposed_owner: new_owner,
+            });
+            Ok(())
+        }
+
+        /// Accept pending ownership (step 2 of two-step)
+        #[ink(message)]
+        pub fn accept_ownership(&mut self) -> Result<()> {
+            let caller = self.env().caller();
+            let pending = self.pending_owner.ok_or(Error::NoPendingOwner)?;
+            if caller != pending {
+                return Err(Error::NotPendingOwner);
+            }
+            let previous_owner = self.owner;
+            self.owner = caller;
+            self.pending_owner = None;
+            self.env().emit_event(OwnershipTransferred {
+                previous_owner,
+                new_owner: caller,
+            });
             Ok(())
         }
 
@@ -268,6 +326,16 @@ mod faucet {
             }
             Ok(())
         }
+
+        /// Upgrade the contract code (owner only)
+        #[ink(message)]
+        pub fn set_code_hash(&mut self, new_code_hash: Hash) -> Result<()> {
+            self.ensure_owner()?;
+            ink::env::set_code_hash::<Environment>(&new_code_hash)
+                .map_err(|_| Error::CodeHashUpdateFailed)?;
+            self.env().emit_event(CodeHashUpdated { new_code_hash });
+            Ok(())
+        }
     }
 
     #[cfg(test)]
@@ -319,7 +387,14 @@ mod faucet {
             let mut faucet = Faucet::new(1000, 100);
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
 
+            // Step 1: Propose ownership transfer
             assert!(faucet.transfer_ownership(accounts.bob).is_ok());
+            // Owner hasn't changed yet
+            assert_eq!(faucet.owner(), accounts.alice);
+
+            // Step 2: Bob accepts ownership
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.bob);
+            assert!(faucet.accept_ownership().is_ok());
             assert_eq!(faucet.owner(), accounts.bob);
         }
     }

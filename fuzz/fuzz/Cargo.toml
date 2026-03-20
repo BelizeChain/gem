@@ -1,0 +1,36 @@
+[package]
+name = "gem-fuzz-targets"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+gem-fuzz = { path = ".." }
+
+[[bin]]
+name = "harness_01_dalla_arithmetic"
+path = "fuzz_targets/harness_01_dalla_arithmetic.rs"
+doc = false
+
+[[bin]]
+name = "harness_02_pair_k_invariant"
+path = "fuzz_targets/harness_02_pair_k_invariant.rs"
+doc = false
+
+[[bin]]
+name = "harness_03_lp_inflation"
+path = "fuzz_targets/harness_03_lp_inflation.rs"
+doc = false
+
+[[bin]]
+name = "harness_04_router_path"
+path = "fuzz_targets/harness_04_router_path.rs"
+doc = false
+
+[workspace]
+members = ["."]

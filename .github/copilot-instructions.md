@@ -2,7 +2,7 @@
 
 ## Project Identity
 - **Repo**: `BelizeChain/gem`
-- **Role**: Smart contract platform — ink! 4.0 contracts for BelizeChain
+- **Role**: Smart contract platform — ink! 5.1.1 contracts for BelizeChain
 - **Language**: Rust (ink! / Substrate)
 - **Branch**: `main` (default)
 

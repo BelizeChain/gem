@@ -1,0 +1,51 @@
+NOTICE
+======
+
+BelizeChain GEM — Smart Contract Platform
+Copyright (C) 2024-2026 BelizeChain <dev@belizechain.org>
+
+This product is licensed under the GNU General Public License v3.0 only
+(GPL-3.0-only). See the LICENSE file in the root of this repository for
+the full license text.
+
+
+Third-Party Dependency License Selections
+==========================================
+
+This project incorporates the following third-party crates whose licenses
+require explicit selection or documentation.
+
+
+array-bytes v6.2.3
+------------------
+  License declared by crate authors: Apache-2.0 OR GPL-3.0-only (dual-license)
+  License selected by this project:  Apache-2.0
+
+  The `array-bytes` crate (used transitively via sp-core → ink) is
+  dual-licensed under either the Apache License, Version 2.0 or the
+  GNU General Public License v3.0 only.  Under the terms of its dual
+  license, this project explicitly selects the Apache License, Version 2.0
+  for this dependency.  The Apache 2.0 license is compatible with and
+  permissive relative to this project's GPL-3.0-only license.
+
+  SPDX expression selected: Apache-2.0
+  Source: https://crates.io/crates/array-bytes
+
+
+Substrate / Polkadot SDK Crates
+---------------------------------
+  Parity Technologies' Substrate runtime crates (including staging-xcm
+  v11.0.0 and xcm-procedural v8.0.0) are licensed GPL-3.0-only and are
+  incorporated as transitive dependencies via ink!'s pallet-contracts
+  integration.  This project's GPL-3.0-only license is compatible with
+  these dependencies.
+
+
+npm: @substrate/connect and smoldot
+-------------------------------------
+  The `@substrate/connect` package and its transitive dependency `smoldot`
+  are licensed GPL-3.0-only and GPL-3.0-or-later respectively.  These
+  packages are declared as optional peer dependencies of @polkadot/api and
+  are NOT bundled with or required by this SDK at runtime unless explicitly
+  installed by the consumer.  This project's GPL-3.0-only license is
+  compatible with these dependencies.

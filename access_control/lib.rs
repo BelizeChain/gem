@@ -53,7 +53,7 @@ use scale::{Decode, Encode};
 // Common Types & Errors
 // ============================================================================
 
-pub type RoleType = u8;
+pub type RoleType = u32;
 
 #[derive(Debug, PartialEq, Eq, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -68,6 +68,16 @@ pub enum AccessError {
     Paused,
     /// Contract is not paused
     NotPaused,
+    /// Caller identity does not match the expected account
+    InvalidCaller,
+    /// Irreversible action requires explicit confirmation
+    ConfirmationRequired,
+    /// Cannot revoke the last DEFAULT_ADMIN_ROLE holder
+    CannotRevokeLastAdmin,
+    /// DEFAULT_ADMIN_ROLE's admin cannot be reassigned to another role
+    CannotChangeDefaultAdminRole,
+    /// Caller is not the pending owner
+    NotPendingOwner,
 }
 
 pub type Result<T> = core::result::Result<T, AccessError>;
@@ -88,6 +98,7 @@ pub mod ownable {
     )]
     pub struct OwnableData {
         owner: Option<AccountId>,
+        pending_owner: Option<AccountId>,
     }
 
     /// Events for Ownable
@@ -102,7 +113,7 @@ pub mod ownable {
     impl OwnableData {
         /// Initialize Ownable with initial owner
         pub fn new(owner: AccountId) -> Self {
-            Self { owner: Some(owner) }
+            Self { owner: Some(owner), pending_owner: None }
         }
 
         /// Get current owner
@@ -126,44 +137,63 @@ pub mod ownable {
             }
         }
 
-        /// Transfer ownership to new owner
+        /// Propose a new owner (two-step transfer, step 1).
         ///
         /// Requirements:
         /// - Caller must be current owner
-        /// - New owner cannot be zero address
-        pub fn transfer_ownership<E: ink::env::Environment>(
+        /// - Proposed owner cannot be zero address
+        pub fn propose_ownership(
             &mut self,
             caller: AccountId,
-            new_owner: AccountId,
-            emit_event: impl FnOnce(OwnershipTransferred),
+            proposed: AccountId,
         ) -> Result<()> {
             self.ensure_owner(caller)?;
-
-            if new_owner == AccountId::from([0u8; 32]) {
+            if proposed == AccountId::from([0u8; 32]) {
                 return Err(AccessError::ZeroAddress);
             }
-
-            let previous_owner = self.owner;
-            self.owner = Some(new_owner);
-
-            emit_event(OwnershipTransferred {
-                previous_owner,
-                new_owner: Some(new_owner),
-            });
-
+            self.pending_owner = Some(proposed);
             Ok(())
+        }
+
+        /// Accept pending ownership (two-step transfer, step 2).
+        ///
+        /// Requirements:
+        /// - Caller must be the pending owner
+        pub fn accept_ownership(
+            &mut self,
+            caller: AccountId,
+            emit_event: impl FnOnce(OwnershipTransferred),
+        ) -> Result<()> {
+            match self.pending_owner {
+                Some(p) if p == caller => {
+                    let previous_owner = self.owner;
+                    self.owner = Some(caller);
+                    self.pending_owner = None;
+                    emit_event(OwnershipTransferred {
+                        previous_owner,
+                        new_owner: Some(caller),
+                    });
+                    Ok(())
+                }
+                _ => Err(AccessError::NotPendingOwner),
+            }
         }
 
         /// Renounce ownership (leaves contract without owner)
         ///
         /// Requirements:
         /// - Caller must be current owner
+        /// - `confirm` must be `true` to prevent accidental renouncement
         pub fn renounce_ownership<E: ink::env::Environment>(
             &mut self,
             caller: AccountId,
+            confirm: bool,
             emit_event: impl FnOnce(OwnershipTransferred),
         ) -> Result<()> {
             self.ensure_owner(caller)?;
+            if !confirm {
+                return Err(AccessError::ConfirmationRequired);
+            }
 
             let previous_owner = self.owner;
             self.owner = None;
@@ -205,6 +235,8 @@ pub mod access_control {
         roles: Mapping<(RoleType, AccountId), ()>,
         /// Role admins: role => admin_role
         role_admins: Mapping<RoleType, RoleType>,
+        /// Count of current DEFAULT_ADMIN_ROLE holders
+        admin_count: u32,
     }
 
     /// Events for AccessControl
@@ -243,6 +275,7 @@ pub mod access_control {
             data.roles.insert((DEFAULT_ADMIN_ROLE, admin), &());
             data.role_admins
                 .insert(DEFAULT_ADMIN_ROLE, &DEFAULT_ADMIN_ROLE);
+            data.admin_count = 1;
             data
         }
 
@@ -281,6 +314,9 @@ pub mod access_control {
 
             if !self.has_role(role, account) {
                 self.roles.insert((role, account), &());
+                if role == DEFAULT_ADMIN_ROLE {
+                    self.admin_count = self.admin_count.saturating_add(1);
+                }
 
                 emit_event(RoleGranted {
                     role,
@@ -307,6 +343,12 @@ pub mod access_control {
             self.ensure_role(caller, admin_role)?;
 
             if self.has_role(role, account) {
+                if role == DEFAULT_ADMIN_ROLE {
+                    if self.admin_count <= 1 {
+                        return Err(AccessError::CannotRevokeLastAdmin);
+                    }
+                    self.admin_count -= 1;
+                }
                 self.roles.remove((role, account));
 
                 emit_event(RoleRevoked {
@@ -321,19 +363,29 @@ pub mod access_control {
 
         /// Renounce role for caller
         ///
-        /// Allows account to give up their own role
+        /// Allows account to give up their own role. `account` must equal `caller`.
         pub fn renounce_role(
             &mut self,
             caller: AccountId,
+            account: AccountId,
             role: RoleType,
             emit_event: impl FnOnce(RoleRevoked),
         ) -> Result<()> {
-            if self.has_role(role, caller) {
-                self.roles.remove((role, caller));
+            if caller != account {
+                return Err(AccessError::InvalidCaller);
+            }
+            if self.has_role(role, account) {
+                if role == DEFAULT_ADMIN_ROLE {
+                    if self.admin_count <= 1 {
+                        return Err(AccessError::CannotRevokeLastAdmin);
+                    }
+                    self.admin_count -= 1;
+                }
+                self.roles.remove((role, account));
 
                 emit_event(RoleRevoked {
                     role,
-                    account: caller,
+                    account,
                     sender: caller,
                 });
             }
@@ -353,6 +405,9 @@ pub mod access_control {
             emit_event: impl FnOnce(RoleAdminChanged),
         ) -> Result<()> {
             self.ensure_role(caller, DEFAULT_ADMIN_ROLE)?;
+            if role == DEFAULT_ADMIN_ROLE && admin_role != DEFAULT_ADMIN_ROLE {
+                return Err(AccessError::CannotChangeDefaultAdminRole);
+            }
 
             let previous_admin_role = self.get_role_admin(role);
             self.role_admins.insert(role, &admin_role);
@@ -432,7 +487,11 @@ pub mod pausable {
         ///
         /// Requirements:
         /// - Contract must not be paused
-        pub fn pause(&mut self, caller: AccountId, emit_event: impl FnOnce(Paused)) -> Result<()> {
+        /// - `authorized` must be `true` (caller authorization checked externally)
+        pub fn pause(&mut self, caller: AccountId, authorized: bool, emit_event: impl FnOnce(Paused)) -> Result<()> {
+            if !authorized {
+                return Err(AccessError::MissingRole);
+            }
             self.ensure_not_paused()?;
             self.paused = true;
 
@@ -445,11 +504,16 @@ pub mod pausable {
         ///
         /// Requirements:
         /// - Contract must be paused
+        /// - `authorized` must be `true` (caller authorization checked externally)
         pub fn unpause(
             &mut self,
             caller: AccountId,
+            authorized: bool,
             emit_event: impl FnOnce(Unpaused),
         ) -> Result<()> {
+            if !authorized {
+                return Err(AccessError::MissingRole);
+            }
             self.ensure_paused()?;
             self.paused = false;
 
@@ -523,7 +587,7 @@ mod example_contract {
         pub fn pause(&mut self) -> Result<()> {
             let caller = self.env().caller();
             self.ownable.ensure_owner(caller)?;
-            self.pausable.pause(caller, |event| {
+            self.pausable.pause(caller, true, |event| {
                 self.env().emit_event(event);
             })
         }
@@ -533,7 +597,7 @@ mod example_contract {
         pub fn unpause(&mut self) -> Result<()> {
             let caller = self.env().caller();
             self.ownable.ensure_owner(caller)?;
-            self.pausable.unpause(caller, |event| {
+            self.pausable.unpause(caller, true, |event| {
                 self.env().emit_event(event);
             })
         }
@@ -595,7 +659,7 @@ mod example_contract {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
 
             // Grant MINTER_ROLE to Bob
-            contract.grant_role(MINTER_ROLE, accounts.bob).unwrap();
+            contract.grant_role(MINTER_ROLE, accounts.bob).expect("grant_role should succeed");
             assert!(contract.has_role(MINTER_ROLE, accounts.bob));
 
             // Bob can call minter_function
@@ -615,13 +679,13 @@ mod example_contract {
             assert!(contract.pausable_function().is_ok());
 
             // Pause contract
-            contract.pause().unwrap();
+            contract.pause().expect("pause should succeed");
 
             // Function reverts when paused
             assert_eq!(contract.pausable_function(), Err(AccessError::Paused));
 
             // Unpause contract
-            contract.unpause().unwrap();
+            contract.unpause().expect("unpause should succeed");
 
             // Function works again
             assert!(contract.pausable_function().is_ok());

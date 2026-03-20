@@ -1,10 +1,10 @@
 # 💎 The GEM (General Ecosystem Machinery)
 
 > **Production-grade smart contract ecosystem for BelizeChain**  
-> ink! 5.0 | Substrate Contracts | DeFi Primitives
+> ink! 5.1.1 | Substrate Contracts | DeFi Primitives
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![ink! 5.0](https://img.shields.io/badge/ink!-5.0-blue)](https://use.ink/)
+[![ink! 5.1.1](https://img.shields.io/badge/ink!-5.1.1-blue)](https://use.ink/)
 [![BelizeChain](https://img.shields.io/badge/BelizeChain-v0.2.0--alpha-brightgreen)](https://github.com/BelizeChain/belizechain)
 
 **The GEM** is BelizeChain's comprehensive smart contract platform powered by ink! and `pallet-contracts`. It provides production-ready contracts, DeFi primitives, security frameworks, and seamless runtime integration.

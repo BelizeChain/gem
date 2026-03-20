@@ -93,7 +93,6 @@ jobs:
     needs: [test, sdk-test]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
-    continue-on-error: true
     outputs:
       image_tag: ${{ steps.meta.outputs.tags }}
     steps:
@@ -152,6 +151,10 @@ jobs:
       - name: Create namespace (if needed)
         run: kubectl create namespace belizechain --dry-run=client -o yaml | kubectl apply -f -
 
+      - name: Clean up old deployer jobs
+        run: |
+          kubectl delete jobs -n belizechain -l app=gem-deployer --field-selector status.successful!=1 --ignore-not-found=true
+
       - name: Deploy contract deployer job
         run: |
           cat <<'EOFK' | kubectl apply -f -
@@ -179,6 +182,8 @@ jobs:
                         value: "ws://belizechain-node.belizechain.svc.cluster.local:9944"
                       - name: ENVIRONMENT
                         value: "testnet"
+                      - name: DEPLOY_ACCOUNT
+                        value: "//Alice"
                     resources:
                       requests:
                         cpu: "250m"

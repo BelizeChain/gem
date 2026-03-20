@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-#![allow(clippy::arithmetic_side_effects)]
 
 #[ink::contract]
 #[allow(clippy::too_many_arguments)]
@@ -89,9 +88,18 @@ pub mod router {
         CallFailed,
         /// Arithmetic operation failed
         ArithmeticError,
+        /// Caller is not authorized
+        NotAuthorized,
+        /// Path exceeds maximum allowed length
+        PathTooLong,
+        /// Path contains circular route (duplicate tokens)
+        CircularPath,
     }
 
     pub type Result<T> = core::result::Result<T, Error>;
+
+    /// Maximum number of tokens in a swap path
+    const MAX_PATH_LENGTH: usize = 4;
 
     // ============================================================================
     // Implementation
@@ -172,17 +180,14 @@ pub mod router {
             // 0.3% fee: amount_in * 997 / 1000
             let amount_in_with_fee = amount_in.checked_mul(997).ok_or(Error::ArithmeticError)?;
 
-            let numerator = amount_in_with_fee
-                .checked_mul(reserve_out)
-                .ok_or(Error::ArithmeticError)?;
-
             let denominator = reserve_in
                 .checked_mul(1000)
                 .ok_or(Error::ArithmeticError)?
                 .checked_add(amount_in_with_fee)
                 .ok_or(Error::ArithmeticError)?;
 
-            Ok(numerator / denominator)
+            Self::_checked_mul_div(amount_in_with_fee, reserve_out, denominator)
+                .ok_or(Error::ArithmeticError)
         }
 
         /// Calculate input amount for exact output
@@ -203,9 +208,7 @@ pub mod router {
                 return Err(Error::InsufficientLiquidity);
             }
 
-            let numerator = reserve_in
-                .checked_mul(amount_out)
-                .ok_or(Error::ArithmeticError)?
+            let numerator_factor = reserve_in
                 .checked_mul(1000)
                 .ok_or(Error::ArithmeticError)?;
 
@@ -215,7 +218,9 @@ pub mod router {
                 .checked_mul(997)
                 .ok_or(Error::ArithmeticError)?;
 
-            Ok(numerator / denominator + 1)
+            let result = Self::_checked_mul_div(numerator_factor, amount_out, denominator)
+                .ok_or(Error::ArithmeticError)?;
+            Ok(result + 1)
         }
 
         /// Calculate output amounts for multi-hop swap
@@ -228,9 +233,7 @@ pub mod router {
             amount_in: Balance,
             path: Vec<AccountId>,
         ) -> Result<Vec<Balance>> {
-            if path.len() < 2 {
-                return Err(Error::InvalidPath);
-            }
+            Self::_validate_path(&path)?;
 
             let mut amounts = Vec::new();
             amounts.push(amount_in);
@@ -251,9 +254,7 @@ pub mod router {
             amount_out: Balance,
             path: Vec<AccountId>,
         ) -> Result<Vec<Balance>> {
-            if path.len() < 2 {
-                return Err(Error::InvalidPath);
-            }
+            Self::_validate_path(&path)?;
 
             let mut amounts = vec![0; path.len()];
             amounts[path.len() - 1] = amount_out;
@@ -317,9 +318,8 @@ pub mod router {
             self._token_transfer_from(token_a, self.env().caller(), pair, amount_a)?;
             self._token_transfer_from(token_b, self.env().caller(), pair, amount_b)?;
 
-            // Call pair.mint(to) - placeholder for cross-contract call
-            let _to = to;
-            let liquidity = 0; // TODO: Implement pair.mint() cross-contract call
+            // Call pair.mint(to) to receive LP tokens
+            let liquidity = self._pair_mint(pair, to)?;
 
             // Emit event
             self.env().emit_event(LiquidityAdded {
@@ -365,12 +365,10 @@ pub mod router {
             let pair = self._get_pair(token_a, token_b)?;
 
             // Transfer LP tokens from caller to pair
-            // Note: LP tokens are managed by the pair contract itself
-            // In production,  would transfer pair LP tokens here
+            self._token_transfer_from(pair, self.env().caller(), pair, liquidity)?;
 
-            // Call pair.burn(to) - placeholder for cross-contract call
-            let (_to, _liquidity, _pair) = (to, liquidity, pair);
-            let (amount0, amount1) = (0, 0); // TODO: Implement pair.burn() cross-contract call
+            // Call pair.burn(to) to receive underlying tokens
+            let (amount0, amount1) = self._pair_burn(pair, to)?;
 
             // Sort amounts based on token order
             let (token0, _) = Self::_sort_tokens(token_a, token_b)?;
@@ -435,6 +433,10 @@ pub mod router {
                 return Err(Error::InsufficientOutputAmount);
             }
 
+            // Transfer input tokens from caller to first pair
+            let first_pair = self._get_pair(path[0], path[1])?;
+            self._token_transfer_from(path[0], self.env().caller(), first_pair, amounts[0])?;
+
             // Execute swaps
             self._swap(&amounts, &path, to)?;
 
@@ -479,6 +481,10 @@ pub mod router {
                 return Err(Error::ExcessiveInputAmount);
             }
 
+            // Transfer input tokens from caller to first pair
+            let first_pair = self._get_pair(path[0], path[1])?;
+            self._token_transfer_from(path[0], self.env().caller(), first_pair, amounts[0])?;
+
             // Execute swaps
             self._swap(&amounts, &path, to)?;
 
@@ -490,6 +496,21 @@ pub mod router {
             });
 
             Ok(amounts)
+        }
+
+        /// Upgrades the contract code hash (factory deployer only)
+        ///
+        /// Allows the router contract to be upgraded to a new implementation
+        /// while preserving storage state.
+        #[ink(message)]
+        pub fn set_code_hash(&mut self, new_code_hash: Hash) -> Result<()> {
+            let caller = self.env().caller();
+            if caller != self.factory {
+                return Err(Error::NotAuthorized);
+            }
+
+            ink::env::set_code_hash::<Environment>(&new_code_hash).map_err(|_| Error::NotAuthorized)?;
+            Ok(())
         }
 
         // ========================================================================
@@ -509,13 +530,15 @@ pub mod router {
             // PSP22::transfer_from selector is 0x54b3c76e
             let selector = [0x54, 0xb3, 0xc7, 0x6e];
 
+            let data: ink::prelude::vec::Vec<u8> = ink::prelude::vec::Vec::new();
             let result = build_call::<Environment>()
                 .call(token)
                 .exec_input(
                     ExecutionInput::new(Selector::new(selector))
                         .push_arg(from)
                         .push_arg(to)
-                        .push_arg(amount),
+                        .push_arg(amount)
+                        .push_arg(data),
                 )
                 .returns::<core::result::Result<(), ink::prelude::vec::Vec<u8>>>()
                 .try_invoke();
@@ -523,23 +546,6 @@ pub mod router {
             match result {
                 Ok(Ok(_)) => Ok(()),
                 _ => Err(Error::CallFailed),
-            }
-        }
-
-        /// Get token balance via PSP22 cross-contract call
-        fn _token_balance_of(&self, token: AccountId, account: AccountId) -> Balance {
-            // PSP22::balance_of selector is 0x65682523
-            let selector = [0x65, 0x68, 0x25, 0x23];
-
-            let result = build_call::<Environment>()
-                .call(token)
-                .exec_input(ExecutionInput::new(Selector::new(selector)).push_arg(account))
-                .returns::<Balance>()
-                .try_invoke();
-
-            match result {
-                Ok(Ok(balance)) => balance,
-                _ => 0,
             }
         }
 
@@ -574,7 +580,7 @@ pub mod router {
         ///
         /// Calls factory.get_pair(tokenA, tokenB) to retrieve the pair address.
         fn _get_pair(&self, token_a: AccountId, token_b: AccountId) -> Result<AccountId> {
-            let selector = [0x6a, 0x3d, 0x0f, 0x5f]; // get_pair method
+            let selector = [0xe7, 0xac, 0xcb, 0x3e]; // get_pair_address method
             let result = build_call::<Environment>()
                 .call(self.factory)
                 .exec_input(
@@ -591,17 +597,27 @@ pub mod router {
             }
         }
 
-        /// Get reserves for two tokens
+        /// Get reserves for two tokens via cross-contract call to pair
         fn _get_reserves(
             &self,
             token_a: AccountId,
             token_b: AccountId,
         ) -> Result<(Balance, Balance)> {
             let (token0, _) = Self::_sort_tokens(token_a, token_b)?;
+            let pair = self._get_pair(token_a, token_b)?;
 
-            // TODO: Call pair.get_reserves()
-            // For now, return placeholder (1000 DALLA, 2000 BZC)
-            let (reserve0, reserve1) = (1000, 2000);
+            // Call pair.get_reserves() — returns (reserve0, reserve1, block_timestamp_last)
+            let selector = [0x8a, 0x0d, 0x11, 0x6f]; // get_reserves
+            let result = build_call::<Environment>()
+                .call(pair)
+                .exec_input(ExecutionInput::new(Selector::new(selector)))
+                .returns::<(Balance, Balance, u64)>()
+                .try_invoke();
+
+            let (reserve0, reserve1) = match result {
+                Ok(Ok((r0, r1, _timestamp))) => (r0, r1),
+                _ => return Err(Error::CallFailed),
+            };
 
             if token_a == token0 {
                 Ok((reserve0, reserve1))
@@ -690,7 +706,7 @@ pub mod router {
                 };
 
                 // Call pair.swap(amount0Out, amount1Out, to)
-                let selector = [0x1e, 0x6a, 0xf2, 0x6f]; // swap method
+                let selector = [0x11, 0x00, 0x4f, 0xa6]; // swap method
                 let result = build_call::<Environment>()
                     .call(pair)
                     .exec_input(
@@ -709,6 +725,82 @@ pub mod router {
             }
 
             Ok(())
+        }
+
+        /// Validate swap path: length bounds and no circular routes
+        fn _validate_path(path: &[AccountId]) -> Result<()> {
+            if path.len() < 2 {
+                return Err(Error::InvalidPath);
+            }
+            if path.len() > MAX_PATH_LENGTH {
+                return Err(Error::PathTooLong);
+            }
+            for i in 0..path.len() {
+                for j in (i + 1)..path.len() {
+                    if path[i] == path[j] {
+                        return Err(Error::CircularPath);
+                    }
+                }
+            }
+            Ok(())
+        }
+
+        /// Call pair.mint(to) to mint LP tokens
+        fn _pair_mint(&self, pair: AccountId, to: AccountId) -> Result<Balance> {
+            let selector = [0xcf, 0xdd, 0x9a, 0xa2]; // mint
+            let result = build_call::<Environment>()
+                .call(pair)
+                .exec_input(ExecutionInput::new(Selector::new(selector)).push_arg(to))
+                .returns::<core::result::Result<Balance, Vec<u8>>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(liquidity))) => Ok(liquidity),
+                _ => Err(Error::CallFailed),
+            }
+        }
+
+        /// Call pair.burn(to) to burn LP tokens and receive underlying tokens
+        fn _pair_burn(&self, pair: AccountId, to: AccountId) -> Result<(Balance, Balance)> {
+            let selector = [0xb1, 0xef, 0xc1, 0x7b]; // burn
+            let result = build_call::<Environment>()
+                .call(pair)
+                .exec_input(ExecutionInput::new(Selector::new(selector)).push_arg(to))
+                .returns::<core::result::Result<(Balance, Balance), Vec<u8>>>()
+                .try_invoke();
+
+            match result {
+                Ok(Ok(Ok(amounts))) => Ok(amounts),
+                _ => Err(Error::CallFailed),
+            }
+        }
+
+        /// Compute (a * b) / c safely using GCD reduction to avoid u128 overflow.
+        fn _checked_mul_div(a: u128, b: u128, c: u128) -> Option<u128> {
+            if c == 0 {
+                return None;
+            }
+            if let Some(product) = a.checked_mul(b) {
+                return Some(product / c);
+            }
+            // Reduce by GCD to minimize values before multiplication
+            let g1 = Self::_gcd(a, c);
+            let a_reduced = a / g1;
+            let c_reduced = c / g1;
+            let g2 = Self::_gcd(b, c_reduced);
+            let b_reduced = b / g2;
+            let c_final = c_reduced / g2;
+            a_reduced.checked_mul(b_reduced).map(|p| p / c_final)
+        }
+
+        /// Greatest common divisor (Euclidean algorithm)
+        fn _gcd(mut a: u128, mut b: u128) -> u128 {
+            while b != 0 {
+                let t = b;
+                b = a % b;
+                a = t;
+            }
+            a
         }
     }
 
@@ -770,6 +862,174 @@ pub mod router {
 
             // Should be around 100
             assert!(amount_in > 99 && amount_in < 101);
+        }
+
+        // ====================================================================
+        // Error condition tests
+        // ====================================================================
+
+        #[ink::test]
+        fn quote_zero_amount_fails() {
+            let (factory, wbzc) = get_test_accounts();
+            let router = Router::new(factory, wbzc);
+            assert_eq!(router.quote(0, 1000, 2000), Err(Error::ZeroAmount));
+        }
+
+        #[ink::test]
+        fn quote_zero_reserves_fails() {
+            let (factory, wbzc) = get_test_accounts();
+            let router = Router::new(factory, wbzc);
+            assert_eq!(router.quote(100, 0, 2000), Err(Error::InsufficientLiquidity));
+            assert_eq!(router.quote(100, 1000, 0), Err(Error::InsufficientLiquidity));
+        }
+
+        #[ink::test]
+        fn get_amount_out_zero_amount_fails() {
+            let (factory, wbzc) = get_test_accounts();
+            let router = Router::new(factory, wbzc);
+            assert_eq!(router.get_amount_out(0, 1000, 2000), Err(Error::ZeroAmount));
+        }
+
+        #[ink::test]
+        fn get_amount_out_zero_reserves_fails() {
+            let (factory, wbzc) = get_test_accounts();
+            let router = Router::new(factory, wbzc);
+            assert_eq!(router.get_amount_out(100, 0, 2000), Err(Error::InsufficientLiquidity));
+            assert_eq!(router.get_amount_out(100, 1000, 0), Err(Error::InsufficientLiquidity));
+        }
+
+        #[ink::test]
+        fn get_amount_in_zero_amount_fails() {
+            let (factory, wbzc) = get_test_accounts();
+            let router = Router::new(factory, wbzc);
+            assert_eq!(router.get_amount_in(0, 1000, 2000), Err(Error::ZeroAmount));
+        }
+
+        #[ink::test]
+        fn get_amount_in_zero_reserves_fails() {
+            let (factory, wbzc) = get_test_accounts();
+            let router = Router::new(factory, wbzc);
+            assert_eq!(router.get_amount_in(100, 0, 2000), Err(Error::InsufficientLiquidity));
+            assert_eq!(router.get_amount_in(100, 1000, 0), Err(Error::InsufficientLiquidity));
+        }
+
+        #[ink::test]
+        fn get_amount_in_amount_exceeds_reserve_fails() {
+            let (factory, wbzc) = get_test_accounts();
+            let router = Router::new(factory, wbzc);
+            assert_eq!(router.get_amount_in(2000, 1000, 2000), Err(Error::InsufficientLiquidity));
+            assert_eq!(router.get_amount_in(2001, 1000, 2000), Err(Error::InsufficientLiquidity));
+        }
+
+        // ====================================================================
+        // Sort tokens tests
+        // ====================================================================
+
+        #[ink::test]
+        fn sort_tokens_identical_fails() {
+            let (factory, _) = get_test_accounts();
+            assert_eq!(Router::_sort_tokens(factory, factory), Err(Error::IdenticalAddresses));
+        }
+
+        #[ink::test]
+        fn sort_tokens_zero_address_fails() {
+            let (factory, _) = get_test_accounts();
+            let zero = AccountId::from([0u8; 32]);
+            assert_eq!(Router::_sort_tokens(zero, factory), Err(Error::ZeroAddress));
+            assert_eq!(Router::_sort_tokens(factory, zero), Err(Error::ZeroAddress));
+        }
+
+        #[ink::test]
+        fn sort_tokens_returns_ordered() {
+            let a = AccountId::from([1u8; 32]);
+            let b = AccountId::from([2u8; 32]);
+            let (t0, t1) = Router::_sort_tokens(a, b).unwrap();
+            assert!(t0 <= t1);
+            let (t0_r, t1_r) = Router::_sort_tokens(b, a).unwrap();
+            assert_eq!(t0, t0_r);
+            assert_eq!(t1, t1_r);
+        }
+
+        // ====================================================================
+        // Path validation tests
+        // ====================================================================
+
+        #[ink::test]
+        fn validate_path_too_short_fails() {
+            let a = AccountId::from([1u8; 32]);
+            assert_eq!(Router::_validate_path(&[a]), Err(Error::InvalidPath));
+            assert_eq!(Router::_validate_path(&[]), Err(Error::InvalidPath));
+        }
+
+        #[ink::test]
+        fn validate_path_too_long_fails() {
+            let tokens: Vec<AccountId> = (1..=5).map(|i| AccountId::from([i; 32])).collect();
+            assert_eq!(Router::_validate_path(&tokens), Err(Error::PathTooLong));
+        }
+
+        #[ink::test]
+        fn validate_path_circular_fails() {
+            let a = AccountId::from([1u8; 32]);
+            let b = AccountId::from([2u8; 32]);
+            assert_eq!(Router::_validate_path(&[a, b, a]), Err(Error::CircularPath));
+        }
+
+        #[ink::test]
+        fn validate_path_valid() {
+            let a = AccountId::from([1u8; 32]);
+            let b = AccountId::from([2u8; 32]);
+            let c = AccountId::from([3u8; 32]);
+            assert!(Router::_validate_path(&[a, b]).is_ok());
+            assert!(Router::_validate_path(&[a, b, c]).is_ok());
+        }
+
+        // ====================================================================
+        // Math helper tests
+        // ====================================================================
+
+        #[ink::test]
+        fn checked_mul_div_basic() {
+            // Simple case: (10 * 20) / 5 = 40
+            assert_eq!(Router::_checked_mul_div(10, 20, 5), Some(40));
+        }
+
+        #[ink::test]
+        fn checked_mul_div_zero_denominator() {
+            assert_eq!(Router::_checked_mul_div(10, 20, 0), None);
+        }
+
+        #[ink::test]
+        fn checked_mul_div_large_values() {
+            // Values that would overflow u128 if multiplied directly
+            let a: u128 = 1_000_000_000_000_000_000; // 10^18
+            let b: u128 = 2_000_000_000_000_000_000; // 2 * 10^18
+            let c: u128 = 500_000_000_000_000_000;   // 5 * 10^17
+            // (10^18 * 2*10^18) / (5*10^17) = 4*10^18
+            let result = Router::_checked_mul_div(a, b, c);
+            assert!(result.is_some());
+            assert_eq!(result.unwrap(), 4_000_000_000_000_000_000);
+        }
+
+        #[ink::test]
+        fn gcd_basic() {
+            assert_eq!(Router::_gcd(12, 8), 4);
+            assert_eq!(Router::_gcd(100, 75), 25);
+            assert_eq!(Router::_gcd(17, 13), 1);
+            assert_eq!(Router::_gcd(0, 5), 5);
+            assert_eq!(Router::_gcd(5, 0), 5);
+        }
+
+        // ====================================================================
+        // Deadline test
+        // ====================================================================
+
+        #[ink::test]
+        fn ensure_not_expired_works() {
+            let (factory, wbzc) = get_test_accounts();
+            let router = Router::new(factory, wbzc);
+            // Current block timestamp is 0 in test env, so deadline=0 means not expired (0 > 0 is false)
+            assert!(router._ensure_not_expired(0).is_ok());
+            assert!(router._ensure_not_expired(1).is_ok());
         }
     }
 }

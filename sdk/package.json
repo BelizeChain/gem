@@ -25,7 +25,7 @@
     "cryptocurrency"
   ],
   "author": "BelizeChain Team",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/BelizeChain/gem.git",
@@ -38,6 +38,14 @@
   "peerDependencies": {
     "@polkadot/api": "^10.0.0 || ^11.0.0 || ^12.0.0 || ^13.0.0",
     "@polkadot/api-contract": "^10.0.0 || ^11.0.0 || ^12.0.0 || ^13.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@substrate/connect": {
+      "optional": true
+    }
+  },
+  "overrides": {
+    "bn.js": ">=5.2.1"
   },
   "dependencies": {
     "@polkadot/keyring": "^13.2.1",

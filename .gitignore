@@ -38,6 +38,7 @@ coverage/
 
 # Temporary files
 *.tmp
+*.bak
 .cache/
 
 # Environment
