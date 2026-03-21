@@ -65,6 +65,7 @@ mod beli_nft {
     /// PSP34-standard token ID type
     #[derive(Debug, PartialEq, Eq, Clone)]
     #[ink::scale_derive(Encode, Decode, TypeInfo)]
+    #[allow(clippy::cast_possible_truncation)]
     pub enum Id {
         U8(u8),
         U16(u16),
@@ -77,6 +78,7 @@ mod beli_nft {
     /// PSP34-standard error type
     #[derive(Debug, PartialEq, Eq)]
     #[ink::scale_derive(Encode, Decode, TypeInfo)]
+    #[allow(clippy::cast_possible_truncation)]
     pub enum PSP34Error {
         /// Custom error with message
         Custom(String),
@@ -271,12 +273,7 @@ mod beli_nft {
         /// - `id: Some(Id)` — checks per-token approval
         /// - `id: None` — checks operator-level approval
         #[ink(message)]
-        pub fn allowance(
-            &self,
-            owner: AccountId,
-            operator: AccountId,
-            id: Option<Id>,
-        ) -> bool {
+        pub fn allowance(&self, owner: AccountId, operator: AccountId, id: Option<Id>) -> bool {
             match id {
                 Some(token_id) => {
                     let tid = match Self::extract_id(&token_id) {
@@ -342,7 +339,9 @@ mod beli_nft {
         ) -> core::result::Result<(), PSP34Error> {
             let token_id = Self::extract_id(&id)?;
             let caller = self.env().caller();
-            let owner = self.token_owner.get(token_id)
+            let owner = self
+                .token_owner
+                .get(token_id)
                 .ok_or(PSP34Error::TokenNotExists)?;
 
             if caller != owner && !self.is_approved_or_owner(caller, token_id) {
@@ -393,7 +392,9 @@ mod beli_nft {
             match id {
                 Some(token_id) => {
                     let tid = Self::extract_id(&token_id)?;
-                    let owner = self.token_owner.get(tid)
+                    let owner = self
+                        .token_owner
+                        .get(tid)
                         .ok_or(PSP34Error::TokenNotExists)?;
                     if caller != owner && !self.is_approved_for_all(owner, caller) {
                         return Err(PSP34Error::NotApproved);
@@ -668,7 +669,9 @@ mod beli_nft {
         fn extract_id(id: &Id) -> core::result::Result<TokenId, PSP34Error> {
             match id {
                 Id::U32(v) => Ok(*v),
-                _ => Err(PSP34Error::Custom(String::from("Only U32 token IDs supported"))),
+                _ => Err(PSP34Error::Custom(String::from(
+                    "Only U32 token IDs supported",
+                ))),
             }
         }
     }
@@ -813,8 +816,12 @@ mod beli_nft {
 
             // Charlie can transfer both tokens
             set_caller(accounts.charlie);
-            assert!(nft.transfer(accounts.charlie, Id::U32(token_id_1), Vec::new()).is_ok());
-            assert!(nft.transfer(accounts.charlie, Id::U32(token_id_2), Vec::new()).is_ok());
+            assert!(nft
+                .transfer(accounts.charlie, Id::U32(token_id_1), Vec::new())
+                .is_ok());
+            assert!(nft
+                .transfer(accounts.charlie, Id::U32(token_id_2), Vec::new())
+                .is_ok());
             assert_eq!(nft.balance_of(accounts.charlie), 2);
         }
 

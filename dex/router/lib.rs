@@ -208,9 +208,7 @@ pub mod router {
                 return Err(Error::InsufficientLiquidity);
             }
 
-            let numerator_factor = reserve_in
-                .checked_mul(1000)
-                .ok_or(Error::ArithmeticError)?;
+            let numerator_factor = reserve_in.checked_mul(1000).ok_or(Error::ArithmeticError)?;
 
             let denominator = reserve_out
                 .checked_sub(amount_out)
@@ -509,7 +507,8 @@ pub mod router {
                 return Err(Error::NotAuthorized);
             }
 
-            ink::env::set_code_hash::<Environment>(&new_code_hash).map_err(|_| Error::NotAuthorized)?;
+            ink::env::set_code_hash::<Environment>(&new_code_hash)
+                .map_err(|_| Error::NotAuthorized)?;
             Ok(())
         }
 
@@ -879,8 +878,14 @@ pub mod router {
         fn quote_zero_reserves_fails() {
             let (factory, wbzc) = get_test_accounts();
             let router = Router::new(factory, wbzc);
-            assert_eq!(router.quote(100, 0, 2000), Err(Error::InsufficientLiquidity));
-            assert_eq!(router.quote(100, 1000, 0), Err(Error::InsufficientLiquidity));
+            assert_eq!(
+                router.quote(100, 0, 2000),
+                Err(Error::InsufficientLiquidity)
+            );
+            assert_eq!(
+                router.quote(100, 1000, 0),
+                Err(Error::InsufficientLiquidity)
+            );
         }
 
         #[ink::test]
@@ -894,8 +899,14 @@ pub mod router {
         fn get_amount_out_zero_reserves_fails() {
             let (factory, wbzc) = get_test_accounts();
             let router = Router::new(factory, wbzc);
-            assert_eq!(router.get_amount_out(100, 0, 2000), Err(Error::InsufficientLiquidity));
-            assert_eq!(router.get_amount_out(100, 1000, 0), Err(Error::InsufficientLiquidity));
+            assert_eq!(
+                router.get_amount_out(100, 0, 2000),
+                Err(Error::InsufficientLiquidity)
+            );
+            assert_eq!(
+                router.get_amount_out(100, 1000, 0),
+                Err(Error::InsufficientLiquidity)
+            );
         }
 
         #[ink::test]
@@ -909,16 +920,28 @@ pub mod router {
         fn get_amount_in_zero_reserves_fails() {
             let (factory, wbzc) = get_test_accounts();
             let router = Router::new(factory, wbzc);
-            assert_eq!(router.get_amount_in(100, 0, 2000), Err(Error::InsufficientLiquidity));
-            assert_eq!(router.get_amount_in(100, 1000, 0), Err(Error::InsufficientLiquidity));
+            assert_eq!(
+                router.get_amount_in(100, 0, 2000),
+                Err(Error::InsufficientLiquidity)
+            );
+            assert_eq!(
+                router.get_amount_in(100, 1000, 0),
+                Err(Error::InsufficientLiquidity)
+            );
         }
 
         #[ink::test]
         fn get_amount_in_amount_exceeds_reserve_fails() {
             let (factory, wbzc) = get_test_accounts();
             let router = Router::new(factory, wbzc);
-            assert_eq!(router.get_amount_in(2000, 1000, 2000), Err(Error::InsufficientLiquidity));
-            assert_eq!(router.get_amount_in(2001, 1000, 2000), Err(Error::InsufficientLiquidity));
+            assert_eq!(
+                router.get_amount_in(2000, 1000, 2000),
+                Err(Error::InsufficientLiquidity)
+            );
+            assert_eq!(
+                router.get_amount_in(2001, 1000, 2000),
+                Err(Error::InsufficientLiquidity)
+            );
         }
 
         // ====================================================================
@@ -928,7 +951,10 @@ pub mod router {
         #[ink::test]
         fn sort_tokens_identical_fails() {
             let (factory, _) = get_test_accounts();
-            assert_eq!(Router::_sort_tokens(factory, factory), Err(Error::IdenticalAddresses));
+            assert_eq!(
+                Router::_sort_tokens(factory, factory),
+                Err(Error::IdenticalAddresses)
+            );
         }
 
         #[ink::test]
@@ -1003,8 +1029,8 @@ pub mod router {
             // Values that would overflow u128 if multiplied directly
             let a: u128 = 1_000_000_000_000_000_000; // 10^18
             let b: u128 = 2_000_000_000_000_000_000; // 2 * 10^18
-            let c: u128 = 500_000_000_000_000_000;   // 5 * 10^17
-            // (10^18 * 2*10^18) / (5*10^17) = 4*10^18
+            let c: u128 = 500_000_000_000_000_000; // 5 * 10^17
+                                                   // (10^18 * 2*10^18) / (5*10^17) = 4*10^18
             let result = Router::_checked_mul_div(a, b, c);
             assert!(result.is_some());
             assert_eq!(result.unwrap(), 4_000_000_000_000_000_000);

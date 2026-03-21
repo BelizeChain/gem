@@ -75,6 +75,7 @@ mod psp37_multi_token {
         operator_approvals: Mapping<(AccountId, AccountId), bool>,
 
         /// Per-token-ID amount-based approvals: (owner, operator, token_id) => allowance (GEM-05-C02)
+        #[allow(clippy::type_complexity)]
         token_approvals: Mapping<(AccountId, AccountId, TokenId), Balance>,
 
         /// Burn approvals: (owner, operator) => approved to burn (GEM-05-H03)
@@ -440,9 +441,7 @@ mod psp37_multi_token {
         /// Check if operator is approved to burn owner's tokens
         #[ink(message)]
         pub fn is_burn_approved(&self, owner: AccountId, operator: AccountId) -> bool {
-            self.burn_approvals
-                .get((owner, operator))
-                .unwrap_or(false)
+            self.burn_approvals.get((owner, operator)).unwrap_or(false)
         }
 
         // ========================================================================
@@ -504,7 +503,9 @@ mod psp37_multi_token {
 
             // Allocate token ID with overflow check (GEM-05-L04)
             let token_id = self.next_token_id;
-            self.next_token_id = self.next_token_id.checked_add(1)
+            self.next_token_id = self
+                .next_token_id
+                .checked_add(1)
                 .ok_or(Error::TokenIdOverflow)?;
 
             // Register token type — immutable after this point (GEM-05-C01)
@@ -799,7 +800,8 @@ mod psp37_multi_token {
                     if current_allowance < value {
                         return Err(Error::InsufficientAllowance);
                     }
-                    let new_allowance = current_allowance.checked_sub(value)
+                    let new_allowance = current_allowance
+                        .checked_sub(value)
                         .ok_or(Error::Overflow)?;
                     self.token_approvals
                         .insert((from, operator, token_id), &new_allowance);
@@ -813,13 +815,11 @@ mod psp37_multi_token {
             }
 
             // Update balances with checked arithmetic (GEM-05-H02)
-            let new_from_balance = from_balance.checked_sub(value)
-                .ok_or(Error::Overflow)?;
+            let new_from_balance = from_balance.checked_sub(value).ok_or(Error::Overflow)?;
             self.balances.insert((from, token_id), &new_from_balance);
 
             let to_balance = self.balance_of(to, token_id);
-            let new_to_balance = to_balance.checked_add(value)
-                .ok_or(Error::Overflow)?;
+            let new_to_balance = to_balance.checked_add(value).ok_or(Error::Overflow)?;
             self.balances.insert((to, token_id), &new_to_balance);
 
             // Emit event
@@ -869,7 +869,10 @@ mod psp37_multi_token {
                 }
 
                 // Verify token exists
-                let tt = self.token_types.get(*token_id).ok_or(Error::TokenNotFound)?;
+                let tt = self
+                    .token_types
+                    .get(*token_id)
+                    .ok_or(Error::TokenNotFound)?;
 
                 // Enforce non-fungible transfer constraint (GEM-05-C01)
                 if tt == TokenType::NonFungible && *value != 1 {
@@ -882,7 +885,8 @@ mod psp37_multi_token {
                     if current_allowance < *value {
                         return Err(Error::InsufficientAllowance);
                     }
-                    let new_allowance = current_allowance.checked_sub(*value)
+                    let new_allowance = current_allowance
+                        .checked_sub(*value)
                         .ok_or(Error::Overflow)?;
                     self.token_approvals
                         .insert((from, operator, *token_id), &new_allowance);
@@ -894,13 +898,11 @@ mod psp37_multi_token {
                 }
 
                 // Update balances with checked arithmetic (GEM-05-H02)
-                let new_from_balance = from_balance.checked_sub(*value)
-                    .ok_or(Error::Overflow)?;
+                let new_from_balance = from_balance.checked_sub(*value).ok_or(Error::Overflow)?;
                 self.balances.insert((from, *token_id), &new_from_balance);
 
                 let to_balance = self.balance_of(to, *token_id);
-                let new_to_balance = to_balance.checked_add(*value)
-                    .ok_or(Error::Overflow)?;
+                let new_to_balance = to_balance.checked_add(*value).ok_or(Error::Overflow)?;
                 self.balances.insert((to, *token_id), &new_to_balance);
             }
 
@@ -1010,14 +1012,12 @@ mod psp37_multi_token {
             }
 
             // Update balance with checked arithmetic (GEM-05-H02)
-            let new_balance = balance.checked_sub(amount)
-                .ok_or(Error::Overflow)?;
+            let new_balance = balance.checked_sub(amount).ok_or(Error::Overflow)?;
             self.balances.insert((from, token_id), &new_balance);
 
             // Update total supply with checked arithmetic (GEM-05-M05)
             let supply = self.total_supply(token_id);
-            let new_supply = supply.checked_sub(amount)
-                .ok_or(Error::Overflow)?;
+            let new_supply = supply.checked_sub(amount).ok_or(Error::Overflow)?;
             self.total_supply.insert(token_id, &new_supply);
 
             // Emit event
@@ -1163,7 +1163,10 @@ mod psp37_multi_token {
 
             // Approve Bob for 200 of token_id
             contract.approve(accounts.bob, token_id, 200).unwrap();
-            assert_eq!(contract.allowance(accounts.alice, accounts.bob, token_id), 200);
+            assert_eq!(
+                contract.allowance(accounts.alice, accounts.bob, token_id),
+                200
+            );
 
             // Bob transfers 100
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.bob);
@@ -1172,7 +1175,10 @@ mod psp37_multi_token {
                 .unwrap();
 
             // Allowance decremented
-            assert_eq!(contract.allowance(accounts.alice, accounts.bob, token_id), 100);
+            assert_eq!(
+                contract.allowance(accounts.alice, accounts.bob, token_id),
+                100
+            );
             assert_eq!(contract.balance_of(accounts.alice, token_id), 900);
             assert_eq!(contract.balance_of(accounts.charlie, token_id), 100);
         }

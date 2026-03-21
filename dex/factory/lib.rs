@@ -264,11 +264,7 @@ pub mod factory {
         /// - Neither token can be zero address
         /// - Pair must not already exist
         #[ink(message)]
-        pub fn create_pair(
-            &mut self,
-            token_a: AccountId,
-            token_b: AccountId,
-        ) -> Result<AccountId> {
+        pub fn create_pair(&mut self, token_a: AccountId, token_b: AccountId) -> Result<AccountId> {
             // Reentrancy guard
             if self.locked {
                 return Err(Error::Locked);
@@ -331,9 +327,7 @@ pub mod factory {
         /// Accept the fee setter role (pending setter only)
         #[ink(message)]
         pub fn accept_fee_to_setter(&mut self) -> Result<()> {
-            let pending = self
-                .pending_fee_to_setter
-                .ok_or(Error::NoPendingTransfer)?;
+            let pending = self.pending_fee_to_setter.ok_or(Error::NoPendingTransfer)?;
             let caller = self.env().caller();
             if caller != pending {
                 return Err(Error::NotAuthorized);
@@ -418,7 +412,9 @@ pub mod factory {
                 return Err(Error::NotAuthorized);
             }
 
-            let new_code_hash = self.proposed_pair_code_hash.ok_or(Error::NoPendingUpgrade)?;
+            let new_code_hash = self
+                .proposed_pair_code_hash
+                .ok_or(Error::NoPendingUpgrade)?;
             let current_block = self.env().block_number();
             let elapsed = current_block.saturating_sub(self.pair_code_hash_proposal_block);
             if elapsed < Self::UPGRADE_TIMELOCK_BLOCKS {
@@ -548,10 +544,7 @@ pub mod factory {
         }
 
         /// Sort token addresses (token0 < token1)
-        fn sort_tokens(
-            token_a: AccountId,
-            token_b: AccountId,
-        ) -> Result<(AccountId, AccountId)> {
+        fn sort_tokens(token_a: AccountId, token_b: AccountId) -> Result<(AccountId, AccountId)> {
             if token_a == token_b {
                 return Err(Error::IdenticalAddresses);
             }
@@ -569,11 +562,7 @@ pub mod factory {
         /// Uses the stored `pair_code_hash` to instantiate the audited Pair contract.
         /// Salt is derived from both sorted token addresses for deterministic addressing.
         #[cfg(not(test))]
-        fn _create_pair_contract(
-            &self,
-            token0: AccountId,
-            token1: AccountId,
-        ) -> Result<AccountId> {
+        fn _create_pair_contract(&self, token0: AccountId, token1: AccountId) -> Result<AccountId> {
             use belizex_pair::pair::PairRef;
             use ink::prelude::vec::Vec;
             use ink::ToAccountId;
@@ -598,11 +587,7 @@ pub mod factory {
         ///
         /// Generates a unique address from both token addresses.
         #[cfg(test)]
-        fn _create_pair_contract(
-            &self,
-            token0: AccountId,
-            token1: AccountId,
-        ) -> Result<AccountId> {
+        fn _create_pair_contract(&self, token0: AccountId, token1: AccountId) -> Result<AccountId> {
             let t0: &[u8] = token0.as_ref();
             let t1: &[u8] = token1.as_ref();
             let mut pair_bytes = [0u8; 32];
@@ -828,10 +813,7 @@ pub mod factory {
             let mut factory = create_factory();
 
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(fee_setter);
-            assert_eq!(
-                factory.set_fee_to_setter(zero),
-                Err(Error::ZeroAddress)
-            );
+            assert_eq!(factory.set_fee_to_setter(zero), Err(Error::ZeroAddress));
         }
 
         #[ink::test]
@@ -840,10 +822,7 @@ pub mod factory {
             let mut factory = create_factory();
 
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(other);
-            assert_eq!(
-                factory.set_fee_to_setter(other),
-                Err(Error::NotAuthorized)
-            );
+            assert_eq!(factory.set_fee_to_setter(other), Err(Error::NotAuthorized));
         }
 
         #[ink::test]
@@ -867,10 +846,7 @@ pub mod factory {
             factory.set_fee_to_setter(new_setter).unwrap();
 
             ink::env::test::set_caller::<ink::env::DefaultEnvironment>(wrong);
-            assert_eq!(
-                factory.accept_fee_to_setter(),
-                Err(Error::NotAuthorized)
-            );
+            assert_eq!(factory.accept_fee_to_setter(), Err(Error::NotAuthorized));
         }
 
         // ====================================================================
@@ -995,10 +971,7 @@ pub mod factory {
                 factory.propose_pair_code_hash(Hash::from([0xCC; 32])),
                 Err(Error::NotAuthorized)
             );
-            assert_eq!(
-                factory.set_admin(fee_setter),
-                Err(Error::NotAuthorized)
-            );
+            assert_eq!(factory.set_admin(fee_setter), Err(Error::NotAuthorized));
         }
 
         #[ink::test]

@@ -784,7 +784,9 @@ mod dalla_token {
             let accs = accounts();
             let mut token = DallaToken::new(1_000_000_000_000_u128);
 
-            assert!(token.transfer(accs.bob, 100_000_000_000, Vec::new()).is_ok());
+            assert!(token
+                .transfer(accs.bob, 100_000_000_000, Vec::new())
+                .is_ok());
             assert_eq!(token.balance_of(accs.alice), 900_000_000_000);
             assert_eq!(token.balance_of(accs.bob), 100_000_000_000);
         }
@@ -812,7 +814,9 @@ mod dalla_token {
             let accs = accounts();
             let mut token = DallaToken::new(1_000_000_000_000_u128);
 
-            assert!(token.transfer(accs.alice, 100_000_000_000, Vec::new()).is_ok());
+            assert!(token
+                .transfer(accs.alice, 100_000_000_000, Vec::new())
+                .is_ok());
             assert_eq!(token.balance_of(accs.alice), 1_000_000_000_000);
         }
 

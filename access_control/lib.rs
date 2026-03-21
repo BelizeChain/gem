@@ -113,7 +113,10 @@ pub mod ownable {
     impl OwnableData {
         /// Initialize Ownable with initial owner
         pub fn new(owner: AccountId) -> Self {
-            Self { owner: Some(owner), pending_owner: None }
+            Self {
+                owner: Some(owner),
+                pending_owner: None,
+            }
         }
 
         /// Get current owner
@@ -142,11 +145,7 @@ pub mod ownable {
         /// Requirements:
         /// - Caller must be current owner
         /// - Proposed owner cannot be zero address
-        pub fn propose_ownership(
-            &mut self,
-            caller: AccountId,
-            proposed: AccountId,
-        ) -> Result<()> {
+        pub fn propose_ownership(&mut self, caller: AccountId, proposed: AccountId) -> Result<()> {
             self.ensure_owner(caller)?;
             if proposed == AccountId::from([0u8; 32]) {
                 return Err(AccessError::ZeroAddress);
@@ -488,7 +487,12 @@ pub mod pausable {
         /// Requirements:
         /// - Contract must not be paused
         /// - `authorized` must be `true` (caller authorization checked externally)
-        pub fn pause(&mut self, caller: AccountId, authorized: bool, emit_event: impl FnOnce(Paused)) -> Result<()> {
+        pub fn pause(
+            &mut self,
+            caller: AccountId,
+            authorized: bool,
+            emit_event: impl FnOnce(Paused),
+        ) -> Result<()> {
             if !authorized {
                 return Err(AccessError::MissingRole);
             }
@@ -659,7 +663,9 @@ mod example_contract {
             let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
 
             // Grant MINTER_ROLE to Bob
-            contract.grant_role(MINTER_ROLE, accounts.bob).expect("grant_role should succeed");
+            contract
+                .grant_role(MINTER_ROLE, accounts.bob)
+                .expect("grant_role should succeed");
             assert!(contract.has_role(MINTER_ROLE, accounts.bob));
 
             // Bob can call minter_function

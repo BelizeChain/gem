@@ -272,6 +272,7 @@ mod simple_dao {
         /// - `total_voting_power == 0`
         /// - `max_active_proposals == 0`
         #[ink(constructor)]
+        #[allow(clippy::too_many_arguments)]
         pub fn new(
             voting_period: u32,
             quorum_bps: u32,
@@ -288,7 +289,7 @@ mod simple_dao {
                 "execution_window must be >= 10 blocks"
             );
             assert!(
-                quorum_bps >= 100 && quorum_bps <= 10000,
+                (100..=10000).contains(&quorum_bps),
                 "quorum_bps must be between 100 and 10000"
             );
             assert!(total_voting_power > 0, "total_voting_power must be > 0");
@@ -809,9 +810,7 @@ mod simple_dao {
             self.proposed_code_hash = Some(new_code_hash);
             self.proposed_code_hash_block = current_block;
 
-            let earliest = current_block
-                .checked_add(self.timelock_blocks)
-                .unwrap_or(u32::MAX);
+            let earliest = current_block.saturating_add(self.timelock_blocks);
 
             self.env().emit_event(CodeHashUpgradeProposed {
                 proposed_by: caller,
@@ -882,9 +881,7 @@ mod simple_dao {
 
             let result = build_call::<Environment>()
                 .call(dalla)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(selector)).push_arg(account),
-                )
+                .exec_input(ExecutionInput::new(Selector::new(selector)).push_arg(account))
                 .returns::<u128>()
                 .try_invoke();
 

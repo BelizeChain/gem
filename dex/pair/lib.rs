@@ -261,11 +261,7 @@ pub mod pair {
 
         /// Increase allowance atomically (race-condition safe)
         #[ink(message)]
-        pub fn increase_allowance(
-            &mut self,
-            spender: AccountId,
-            delta: Balance,
-        ) -> Result<()> {
+        pub fn increase_allowance(&mut self, spender: AccountId, delta: Balance) -> Result<()> {
             let caller = self.env().caller();
             let current = self.allowances.get((caller, spender)).unwrap_or(0);
             let new_allowance = current.checked_add(delta).ok_or(Error::Overflow)?;
@@ -282,14 +278,12 @@ pub mod pair {
 
         /// Decrease allowance atomically (race-condition safe)
         #[ink(message)]
-        pub fn decrease_allowance(
-            &mut self,
-            spender: AccountId,
-            delta: Balance,
-        ) -> Result<()> {
+        pub fn decrease_allowance(&mut self, spender: AccountId, delta: Balance) -> Result<()> {
             let caller = self.env().caller();
             let current = self.allowances.get((caller, spender)).unwrap_or(0);
-            let new_allowance = current.checked_sub(delta).ok_or(Error::InsufficientAllowance)?;
+            let new_allowance = current
+                .checked_sub(delta)
+                .ok_or(Error::InsufficientAllowance)?;
             self.allowances.insert((caller, spender), &new_allowance);
 
             self.env().emit_event(Approval {
@@ -317,8 +311,10 @@ pub mod pair {
                 return Err(Error::InsufficientAllowance);
             }
 
-            self.allowances
-                .insert((from, caller), &(allowance.checked_sub(value).ok_or(Error::Overflow)?));
+            self.allowances.insert(
+                (from, caller),
+                &(allowance.checked_sub(value).ok_or(Error::Overflow)?),
+            );
             self._transfer(from, to, value)
         }
 
@@ -402,7 +398,9 @@ pub mod pair {
                     value: MINIMUM_LIQUIDITY,
                 });
 
-                initial_liquidity.checked_sub(MINIMUM_LIQUIDITY).ok_or(Error::Overflow)?
+                initial_liquidity
+                    .checked_sub(MINIMUM_LIQUIDITY)
+                    .ok_or(Error::Overflow)?
             } else {
                 // Subsequent liquidity provisions
                 let liquidity0 = amount0
@@ -431,9 +429,14 @@ pub mod pair {
 
             // Mint LP tokens
             let to_balance = self.balance_of(to);
-            self.balances
-                .insert(to, &to_balance.checked_add(liquidity).ok_or(Error::Overflow)?);
-            self.total_supply = self.total_supply.checked_add(liquidity).ok_or(Error::Overflow)?;
+            self.balances.insert(
+                to,
+                &to_balance.checked_add(liquidity).ok_or(Error::Overflow)?,
+            );
+            self.total_supply = self
+                .total_supply
+                .checked_add(liquidity)
+                .ok_or(Error::Overflow)?;
 
             // Emit Transfer event for LP token mint
             self.env().emit_event(Transfer {
@@ -514,7 +517,10 @@ pub mod pair {
                 this,
                 &this_balance.checked_sub(liquidity).ok_or(Error::Overflow)?,
             );
-            self.total_supply = self.total_supply.checked_sub(liquidity).ok_or(Error::Overflow)?;
+            self.total_supply = self
+                .total_supply
+                .checked_sub(liquidity)
+                .ok_or(Error::Overflow)?;
 
             // Emit Transfer event for LP token burn
             self.env().emit_event(Transfer {
@@ -604,17 +610,23 @@ pub mod pair {
             let balance1 = self._token_balance_of(self.token1, this)?;
 
             // Calculate amounts in (what user sent)
-            let amount0_in = if balance0 > reserve0.checked_sub(amount0_out).ok_or(Error::Overflow)? {
-                balance0.checked_sub(reserve0.checked_sub(amount0_out).ok_or(Error::Overflow)?).ok_or(Error::Overflow)?
-            } else {
-                0
-            };
+            let amount0_in =
+                if balance0 > reserve0.checked_sub(amount0_out).ok_or(Error::Overflow)? {
+                    balance0
+                        .checked_sub(reserve0.checked_sub(amount0_out).ok_or(Error::Overflow)?)
+                        .ok_or(Error::Overflow)?
+                } else {
+                    0
+                };
 
-            let amount1_in = if balance1 > reserve1.checked_sub(amount1_out).ok_or(Error::Overflow)? {
-                balance1.checked_sub(reserve1.checked_sub(amount1_out).ok_or(Error::Overflow)?).ok_or(Error::Overflow)?
-            } else {
-                0
-            };
+            let amount1_in =
+                if balance1 > reserve1.checked_sub(amount1_out).ok_or(Error::Overflow)? {
+                    balance1
+                        .checked_sub(reserve1.checked_sub(amount1_out).ok_or(Error::Overflow)?)
+                        .ok_or(Error::Overflow)?
+                } else {
+                    0
+                };
 
             if amount0_in == 0 && amount1_in == 0 {
                 return Err(Error::InsufficientInputAmount);
@@ -624,24 +636,28 @@ pub mod pair {
             let balance0_adjusted = balance0
                 .checked_mul(1000)
                 .ok_or(Error::Overflow)?
-                .checked_sub(amount0_in.checked_mul(FEE_NUMERATOR).ok_or(Error::Overflow)?)
+                .checked_sub(
+                    amount0_in
+                        .checked_mul(FEE_NUMERATOR)
+                        .ok_or(Error::Overflow)?,
+                )
                 .ok_or(Error::Overflow)?;
 
             let balance1_adjusted = balance1
                 .checked_mul(1000)
                 .ok_or(Error::Overflow)?
-                .checked_sub(amount1_in.checked_mul(FEE_NUMERATOR).ok_or(Error::Overflow)?)
+                .checked_sub(
+                    amount1_in
+                        .checked_mul(FEE_NUMERATOR)
+                        .ok_or(Error::Overflow)?,
+                )
                 .ok_or(Error::Overflow)?;
 
             // Use U256 multiplication to prevent overflow in invariant check
             let (k_new_hi, k_new_lo) = Self::mul_u256(balance0_adjusted, balance1_adjusted);
 
-            let reserve0_scaled = reserve0
-                .checked_mul(1000)
-                .ok_or(Error::Overflow)?;
-            let reserve1_scaled = reserve1
-                .checked_mul(1000)
-                .ok_or(Error::Overflow)?;
+            let reserve0_scaled = reserve0.checked_mul(1000).ok_or(Error::Overflow)?;
+            let reserve1_scaled = reserve1.checked_mul(1000).ok_or(Error::Overflow)?;
 
             let (k_old_hi, k_old_lo) = Self::mul_u256(reserve0_scaled, reserve1_scaled);
 
@@ -700,7 +716,13 @@ pub mod pair {
             }
 
             // Apply 0.3% fee
-            let amount_in_with_fee = amount_in.checked_mul(FEE_DENOMINATOR.checked_sub(FEE_NUMERATOR).ok_or(Error::Overflow)?).ok_or(Error::Overflow)?;
+            let amount_in_with_fee = amount_in
+                .checked_mul(
+                    FEE_DENOMINATOR
+                        .checked_sub(FEE_NUMERATOR)
+                        .ok_or(Error::Overflow)?,
+                )
+                .ok_or(Error::Overflow)?;
 
             let numerator = amount_in_with_fee
                 .checked_mul(reserve_out)
@@ -744,7 +766,11 @@ pub mod pair {
             let denominator = reserve_out
                 .checked_sub(amount_out)
                 .ok_or(Error::Overflow)?
-                .checked_mul(FEE_DENOMINATOR.checked_sub(FEE_NUMERATOR).ok_or(Error::Overflow)?)
+                .checked_mul(
+                    FEE_DENOMINATOR
+                        .checked_sub(FEE_NUMERATOR)
+                        .ok_or(Error::Overflow)?,
+                )
                 .ok_or(Error::Overflow)?;
 
             let amount_in = numerator
@@ -780,12 +806,7 @@ pub mod pair {
         /// Transfer tokens via PSP22 cross-contract call
         ///
         /// Calls the `transfer` method on a PSP22 token contract
-        fn _token_transfer(
-            &self,
-            token: AccountId,
-            to: AccountId,
-            amount: Balance,
-        ) -> Result<()> {
+        fn _token_transfer(&self, token: AccountId, to: AccountId, amount: Balance) -> Result<()> {
             // PSP22::transfer selector is 0xdb20f9f5
             let selector = [0xdb, 0x20, 0xf9, 0xf5];
 
@@ -812,19 +833,13 @@ pub mod pair {
         ///
         /// Calls the `balance_of` method on a PSP22 token contract.
         /// Returns `Err(BalanceQueryFailed)` if the cross-contract call fails.
-        fn _token_balance_of(
-            &self,
-            token: AccountId,
-            account: AccountId,
-        ) -> Result<Balance> {
+        fn _token_balance_of(&self, token: AccountId, account: AccountId) -> Result<Balance> {
             // PSP22::balance_of selector is 0x65682523
             let selector = [0x65, 0x68, 0x25, 0x23];
 
             let result = build_call::<Environment>()
                 .call(token)
-                .exec_input(
-                    ExecutionInput::new(Selector::new(selector)).push_arg(account),
-                )
+                .exec_input(ExecutionInput::new(Selector::new(selector)).push_arg(account))
                 .returns::<Balance>()
                 .try_invoke();
 
@@ -846,15 +861,13 @@ pub mod pair {
 
             if time_elapsed > 0 && self.reserve0 > 0 && self.reserve1 > 0 {
                 // Price0 = reserve1 / reserve0 encoded as UQ64.64
-                let price0 = (self.reserve1 << FIXED_POINT_SHIFT)
-                    .wrapping_div(self.reserve0);
+                let price0 = (self.reserve1 << FIXED_POINT_SHIFT).wrapping_div(self.reserve0);
                 self.price0_cumulative_last = self
                     .price0_cumulative_last
                     .wrapping_add(price0.wrapping_mul(time_elapsed as u128));
 
                 // Price1 = reserve0 / reserve1 encoded as UQ64.64
-                let price1 = (self.reserve0 << FIXED_POINT_SHIFT)
-                    .wrapping_div(self.reserve1);
+                let price1 = (self.reserve0 << FIXED_POINT_SHIFT).wrapping_div(self.reserve1);
                 self.price1_cumulative_last = self
                     .price1_cumulative_last
                     .wrapping_add(price1.wrapping_mul(time_elapsed as u128));
@@ -873,12 +886,7 @@ pub mod pair {
         }
 
         /// Transfer LP tokens (internal)
-        fn _transfer(
-            &mut self,
-            from: AccountId,
-            to: AccountId,
-            value: Balance,
-        ) -> Result<()> {
+        fn _transfer(&mut self, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
             if to == AccountId::from([0u8; 32]) {
                 return Err(Error::ZeroAddress);
             }
@@ -888,8 +896,10 @@ pub mod pair {
                 return Err(Error::InsufficientBalance);
             }
 
-            self.balances
-                .insert(from, &from_balance.checked_sub(value).ok_or(Error::Overflow)?);
+            self.balances.insert(
+                from,
+                &from_balance.checked_sub(value).ok_or(Error::Overflow)?,
+            );
 
             let to_balance = self.balance_of(to);
             self.balances
@@ -962,9 +972,12 @@ pub mod pair {
             let lo_hi = a_lo * b_hi;
             let hi_hi = a_hi * b_hi;
 
-            let mid = (lo_lo >> 64) + (hi_lo & 0xFFFF_FFFF_FFFF_FFFF_u128) + (lo_hi & 0xFFFF_FFFF_FFFF_FFFF_u128);
+            let mid = (lo_lo >> 64)
+                + (hi_lo & 0xFFFF_FFFF_FFFF_FFFF_u128)
+                + (lo_hi & 0xFFFF_FFFF_FFFF_FFFF_u128);
 
-            let lo = (lo_lo & 0xFFFF_FFFF_FFFF_FFFF_u128) | ((mid & 0xFFFF_FFFF_FFFF_FFFF_u128) << 64);
+            let lo =
+                (lo_lo & 0xFFFF_FFFF_FFFF_FFFF_u128) | ((mid & 0xFFFF_FFFF_FFFF_FFFF_u128) << 64);
             let hi = hi_hi + (hi_lo >> 64) + (lo_hi >> 64) + (mid >> 64);
 
             (hi, lo)
@@ -997,8 +1010,7 @@ pub mod pair {
         use super::*;
 
         fn create_tokens() -> (AccountId, AccountId) {
-            let accounts =
-                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
             (accounts.bob, accounts.charlie)
         }
 
@@ -1101,8 +1113,7 @@ pub mod pair {
         fn increase_decrease_allowance_works() {
             let (token0, token1) = create_tokens();
             let mut pair = Pair::new(token0, token1);
-            let accounts =
-                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
 
             // Increase allowance
             pair.increase_allowance(accounts.bob, 100).unwrap();
@@ -1127,8 +1138,7 @@ pub mod pair {
             let mut pair = Pair::new(token0, token1);
             let zero = AccountId::from([0u8; 32]);
 
-            let result =
-                pair.transfer(zero, 100, ink::prelude::vec::Vec::new());
+            let result = pair.transfer(zero, 100, ink::prelude::vec::Vec::new());
             assert_eq!(result, Err(Error::ZeroAddress));
         }
 
@@ -1136,14 +1146,9 @@ pub mod pair {
         fn transfer_insufficient_balance_fails() {
             let (token0, token1) = create_tokens();
             let mut pair = Pair::new(token0, token1);
-            let accounts =
-                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
 
-            let result = pair.transfer(
-                accounts.bob,
-                100,
-                ink::prelude::vec::Vec::new(),
-            );
+            let result = pair.transfer(accounts.bob, 100, ink::prelude::vec::Vec::new());
             assert_eq!(result, Err(Error::InsufficientBalance));
         }
 
@@ -1151,8 +1156,7 @@ pub mod pair {
         fn approve_and_allowance_works() {
             let (token0, token1) = create_tokens();
             let mut pair = Pair::new(token0, token1);
-            let accounts =
-                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
 
             pair.approve(accounts.bob, 500).unwrap();
             assert_eq!(pair.allowance(accounts.alice, accounts.bob), 500);
@@ -1166,8 +1170,7 @@ pub mod pair {
         fn transfer_from_insufficient_allowance_fails() {
             let (token0, token1) = create_tokens();
             let mut pair = Pair::new(token0, token1);
-            let accounts =
-                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
 
             let result = pair.transfer_from(
                 accounts.alice,
@@ -1252,8 +1255,7 @@ pub mod pair {
         fn balance_of_returns_zero_for_unknown() {
             let (token0, token1) = create_tokens();
             let pair = Pair::new(token0, token1);
-            let accounts =
-                ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+            let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
 
             assert_eq!(pair.balance_of(accounts.django), 0);
         }
