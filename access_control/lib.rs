@@ -161,18 +161,16 @@ pub mod ownable {
         pub fn accept_ownership(
             &mut self,
             caller: AccountId,
-            emit_event: impl FnOnce(OwnershipTransferred),
-        ) -> Result<()> {
+        ) -> Result<OwnershipTransferred> {
             match self.pending_owner {
                 Some(p) if p == caller => {
                     let previous_owner = self.owner;
                     self.owner = Some(caller);
                     self.pending_owner = None;
-                    emit_event(OwnershipTransferred {
+                    Ok(OwnershipTransferred {
                         previous_owner,
                         new_owner: Some(caller),
-                    });
-                    Ok(())
+                    })
                 }
                 _ => Err(AccessError::NotPendingOwner),
             }
@@ -183,12 +181,11 @@ pub mod ownable {
         /// Requirements:
         /// - Caller must be current owner
         /// - `confirm` must be `true` to prevent accidental renouncement
-        pub fn renounce_ownership<E: ink::env::Environment>(
+        pub fn renounce_ownership(
             &mut self,
             caller: AccountId,
             confirm: bool,
-            emit_event: impl FnOnce(OwnershipTransferred),
-        ) -> Result<()> {
+        ) -> Result<OwnershipTransferred> {
             self.ensure_owner(caller)?;
             if !confirm {
                 return Err(AccessError::ConfirmationRequired);
@@ -197,12 +194,10 @@ pub mod ownable {
             let previous_owner = self.owner;
             self.owner = None;
 
-            emit_event(OwnershipTransferred {
+            Ok(OwnershipTransferred {
                 previous_owner,
                 new_owner: None,
-            });
-
-            Ok(())
+            })
         }
     }
 }
@@ -224,11 +219,8 @@ pub mod access_control {
     pub const UPGRADER_ROLE: RoleType = 4;
 
     /// Storage for AccessControl pattern
+    #[ink::storage_item]
     #[derive(Debug, Default)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
     pub struct AccessControlData {
         /// Role assignments: (role, account) => has_role
         roles: Mapping<(RoleType, AccountId), ()>,
@@ -306,8 +298,7 @@ pub mod access_control {
             caller: AccountId,
             role: RoleType,
             account: AccountId,
-            emit_event: impl FnOnce(RoleGranted),
-        ) -> Result<()> {
+        ) -> Result<Option<RoleGranted>> {
             let admin_role = self.get_role_admin(role);
             self.ensure_role(caller, admin_role)?;
 
@@ -317,14 +308,14 @@ pub mod access_control {
                     self.admin_count = self.admin_count.saturating_add(1);
                 }
 
-                emit_event(RoleGranted {
+                Ok(Some(RoleGranted {
                     role,
                     account,
                     sender: caller,
-                });
+                }))
+            } else {
+                Ok(None)
             }
-
-            Ok(())
         }
 
         /// Revoke role from account
@@ -336,8 +327,7 @@ pub mod access_control {
             caller: AccountId,
             role: RoleType,
             account: AccountId,
-            emit_event: impl FnOnce(RoleRevoked),
-        ) -> Result<()> {
+        ) -> Result<Option<RoleRevoked>> {
             let admin_role = self.get_role_admin(role);
             self.ensure_role(caller, admin_role)?;
 
@@ -346,18 +336,18 @@ pub mod access_control {
                     if self.admin_count <= 1 {
                         return Err(AccessError::CannotRevokeLastAdmin);
                     }
-                    self.admin_count -= 1;
+                    self.admin_count = self.admin_count.saturating_sub(1);
                 }
                 self.roles.remove((role, account));
 
-                emit_event(RoleRevoked {
+                Ok(Some(RoleRevoked {
                     role,
                     account,
                     sender: caller,
-                });
+                }))
+            } else {
+                Ok(None)
             }
-
-            Ok(())
         }
 
         /// Renounce role for caller
@@ -368,8 +358,7 @@ pub mod access_control {
             caller: AccountId,
             account: AccountId,
             role: RoleType,
-            emit_event: impl FnOnce(RoleRevoked),
-        ) -> Result<()> {
+        ) -> Result<Option<RoleRevoked>> {
             if caller != account {
                 return Err(AccessError::InvalidCaller);
             }
@@ -378,18 +367,18 @@ pub mod access_control {
                     if self.admin_count <= 1 {
                         return Err(AccessError::CannotRevokeLastAdmin);
                     }
-                    self.admin_count -= 1;
+                    self.admin_count = self.admin_count.saturating_sub(1);
                 }
                 self.roles.remove((role, account));
 
-                emit_event(RoleRevoked {
+                Ok(Some(RoleRevoked {
                     role,
                     account,
                     sender: caller,
-                });
+                }))
+            } else {
+                Ok(None)
             }
-
-            Ok(())
         }
 
         /// Set admin role for a role
@@ -401,8 +390,7 @@ pub mod access_control {
             caller: AccountId,
             role: RoleType,
             admin_role: RoleType,
-            emit_event: impl FnOnce(RoleAdminChanged),
-        ) -> Result<()> {
+        ) -> Result<RoleAdminChanged> {
             self.ensure_role(caller, DEFAULT_ADMIN_ROLE)?;
             if role == DEFAULT_ADMIN_ROLE && admin_role != DEFAULT_ADMIN_ROLE {
                 return Err(AccessError::CannotChangeDefaultAdminRole);
@@ -411,13 +399,11 @@ pub mod access_control {
             let previous_admin_role = self.get_role_admin(role);
             self.role_admins.insert(role, &admin_role);
 
-            emit_event(RoleAdminChanged {
+            Ok(RoleAdminChanged {
                 role,
                 previous_admin_role,
                 new_admin_role: admin_role,
-            });
-
-            Ok(())
+            })
         }
     }
 }
@@ -491,17 +477,14 @@ pub mod pausable {
             &mut self,
             caller: AccountId,
             authorized: bool,
-            emit_event: impl FnOnce(Paused),
-        ) -> Result<()> {
+        ) -> Result<Paused> {
             if !authorized {
                 return Err(AccessError::MissingRole);
             }
             self.ensure_not_paused()?;
             self.paused = true;
 
-            emit_event(Paused { account: caller });
-
-            Ok(())
+            Ok(Paused { account: caller })
         }
 
         /// Unpause contract
@@ -513,17 +496,14 @@ pub mod pausable {
             &mut self,
             caller: AccountId,
             authorized: bool,
-            emit_event: impl FnOnce(Unpaused),
-        ) -> Result<()> {
+        ) -> Result<Unpaused> {
             if !authorized {
                 return Err(AccessError::MissingRole);
             }
             self.ensure_paused()?;
             self.paused = false;
 
-            emit_event(Unpaused { account: caller });
-
-            Ok(())
+            Ok(Unpaused { account: caller })
         }
     }
 }
@@ -591,9 +571,9 @@ mod example_contract {
         pub fn pause(&mut self) -> Result<()> {
             let caller = self.env().caller();
             self.ownable.ensure_owner(caller)?;
-            self.pausable.pause(caller, true, |event| {
-                self.env().emit_event(event);
-            })
+            let event = self.pausable.pause(caller, true)?;
+            self.env().emit_event(event);
+            Ok(())
         }
 
         /// Unpause contract (owner only)
@@ -601,29 +581,29 @@ mod example_contract {
         pub fn unpause(&mut self) -> Result<()> {
             let caller = self.env().caller();
             self.ownable.ensure_owner(caller)?;
-            self.pausable.unpause(caller, true, |event| {
-                self.env().emit_event(event);
-            })
+            let event = self.pausable.unpause(caller, true)?;
+            self.env().emit_event(event);
+            Ok(())
         }
 
         /// Grant role (admin only)
         #[ink(message)]
         pub fn grant_role(&mut self, role: RoleType, account: AccountId) -> Result<()> {
             let caller = self.env().caller();
-            self.access_control
-                .grant_role(caller, role, account, |event| {
-                    self.env().emit_event(event);
-                })
+            if let Some(event) = self.access_control.grant_role(caller, role, account)? {
+                self.env().emit_event(event);
+            }
+            Ok(())
         }
 
         /// Revoke role (admin only)
         #[ink(message)]
         pub fn revoke_role(&mut self, role: RoleType, account: AccountId) -> Result<()> {
             let caller = self.env().caller();
-            self.access_control
-                .revoke_role(caller, role, account, |event| {
-                    self.env().emit_event(event);
-                })
+            if let Some(event) = self.access_control.revoke_role(caller, role, account)? {
+                self.env().emit_event(event);
+            }
+            Ok(())
         }
 
         /// Check if account has role

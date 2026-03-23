@@ -32,7 +32,7 @@ const CONTRACTS = {
     localPath: 'dalla_token/target/ink/dalla_token.contract',
     dockerPath: 'dalla_token/dalla_token.contract',
     constructor: 'new',
-    args: [1000000000000000] // 1M tokens with 12 decimals
+    args: [1000000000000000000] // 1M DALLA (1_000_000 * 10^12)
   },
   belinft: {
     name: 'BeliNFT Collection (PSP34)',
@@ -53,7 +53,7 @@ const CONTRACTS = {
     localPath: 'faucet/target/ink/faucet.contract',
     dockerPath: 'faucet/faucet.contract',
     constructor: 'new',
-    args: [100000000000, 100] // 100 DALLA per claim, 100 blocks cooldown
+    args: [100000000000000, 100] // 100 DALLA per claim (100 * 10^12), 100 blocks (~10 min) cooldown
   }
 };
 
@@ -64,7 +64,7 @@ const NETWORKS = {
     account: process.env.DEPLOY_ACCOUNT || '//Alice'
   },
   testnet: {
-    url: process.env.BLOCKCHAIN_WS_URL || process.env.BELIZECHAIN_TESTNET_URL || 'wss://testnet.belizechain.io',
+    url: process.env.BLOCKCHAIN_WS_URL || process.env.BELIZECHAIN_TESTNET_URL || 'ws://belizechain-node.belizechain.svc.cluster.local:9944',
     account: process.env.DEPLOY_ACCOUNT || null
   },
   mainnet: {

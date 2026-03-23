@@ -25,11 +25,11 @@ echo ""
 build_contract() {
     local name=$1
     local path=$2
-    
+
     echo "📦 Building $name..."
     if cargo contract build --release --manifest-path "$path/Cargo.toml" --quiet; then
         echo "   ✅ $name built successfully"
-        
+
         # Check if .contract file was created
         local contract_file="${path}/target/ink/*.contract"
         if ls $contract_file 1> /dev/null 2>&1; then
@@ -44,12 +44,12 @@ build_contract() {
 }
 
 # Build order (standalone contracts first)
+# Note: access_control is a library, not a deployable contract — verified via cargo check
 declare -a CONTRACTS=(
     "DALLA Token:dalla_token"
     "BeliNFT Collection:beli_nft"
     "Simple DAO:simple_dao"
     "Faucet:faucet"
-    "Access Control:access_control"
     "PSP37 Multi-Token:psp37_multi_token"
     "BelizeX Factory:dex/factory"
     "BelizeX Pair:dex/pair"
@@ -64,7 +64,7 @@ TOTAL_COUNT=${#CONTRACTS[@]}
 for contract_info in "${CONTRACTS[@]}"; do
     IFS=':' read -r name path <<< "$contract_info"
     if build_contract "$name" "$path"; then
-        ((SUCCESS_COUNT++))
+        SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
     fi
 done
 

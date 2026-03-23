@@ -7,8 +7,8 @@
 const { GemSDK } = require('../index');
 
 // CONFIGURATION - Update these values
-const FAUCET_CONTRACT = '5ExampleFaucetAddress'; // Update when deployed
-const NODE_URL = 'ws://localhost:9944';
+const FAUCET_CONTRACT = process.env.FAUCET_CONTRACT_ADDRESS || '5ExampleFaucetAddress';
+const NODE_URL = process.env.BLOCKCHAIN_WS_URL || 'ws://localhost:9944';
 
 async function main() {
   console.log('💧 Faucet Example\n');
