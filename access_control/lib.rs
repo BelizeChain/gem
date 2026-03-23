@@ -158,10 +158,7 @@ pub mod ownable {
         ///
         /// Requirements:
         /// - Caller must be the pending owner
-        pub fn accept_ownership(
-            &mut self,
-            caller: AccountId,
-        ) -> Result<OwnershipTransferred> {
+        pub fn accept_ownership(&mut self, caller: AccountId) -> Result<OwnershipTransferred> {
             match self.pending_owner {
                 Some(p) if p == caller => {
                     let previous_owner = self.owner;
@@ -473,11 +470,7 @@ pub mod pausable {
         /// Requirements:
         /// - Contract must not be paused
         /// - `authorized` must be `true` (caller authorization checked externally)
-        pub fn pause(
-            &mut self,
-            caller: AccountId,
-            authorized: bool,
-        ) -> Result<Paused> {
+        pub fn pause(&mut self, caller: AccountId, authorized: bool) -> Result<Paused> {
             if !authorized {
                 return Err(AccessError::MissingRole);
             }
@@ -492,11 +485,7 @@ pub mod pausable {
         /// Requirements:
         /// - Contract must be paused
         /// - `authorized` must be `true` (caller authorization checked externally)
-        pub fn unpause(
-            &mut self,
-            caller: AccountId,
-            authorized: bool,
-        ) -> Result<Unpaused> {
+        pub fn unpause(&mut self, caller: AccountId, authorized: bool) -> Result<Unpaused> {
             if !authorized {
                 return Err(AccessError::MissingRole);
             }
