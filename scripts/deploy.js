@@ -32,28 +32,30 @@ const CONTRACTS = {
     localPath: 'dalla_token/target/ink/dalla_token.contract',
     dockerPath: 'dalla_token/dalla_token.contract',
     constructor: 'new',
-    args: [1000000000000000000] // 1M DALLA (1_000_000 * 10^12)
+    args: ['1000000000000000000'] // 1M DALLA (1_000_000 * 10^12) — string for BigInt safety
   },
   belinft: {
     name: 'BeliNFT Collection (PSP34)',
     localPath: 'beli_nft/target/ink/beli_nft.contract',
     dockerPath: 'beli_nft/beli_nft.contract',
     constructor: 'new',
-    args: []
+    args: ['Belize NFT Collection', 'BNFT']
   },
   dao: {
     name: 'Simple DAO',
     localPath: 'simple_dao/target/ink/simple_dao.contract',
     dockerPath: 'simple_dao/simple_dao.contract',
     constructor: 'new',
-    args: [] // Will be set to DALLA token address after deployment
+    // [voting_period, quorum_bps, total_voting_power, dalla_token, timelock, max_active, min_threshold, exec_window]
+    args: [100, 2000, '1000000000000000000', null, 10, 50, 0, 100]
   },
   faucet: {
     name: 'Testnet Faucet',
     localPath: 'faucet/target/ink/faucet.contract',
     dockerPath: 'faucet/faucet.contract',
     constructor: 'new',
-    args: [100000000000000, 100] // 100 DALLA per claim (100 * 10^12), 100 blocks (~10 min) cooldown
+    args: ['100000000000000', 100], // 100 DALLA per claim (100 * 10^12), 100 blocks (~10 min) cooldown
+    value: '10000000000000000' // 10K DALLA to fund faucet (payable constructor)
   }
 };
 
@@ -163,33 +165,31 @@ class Deployer {
       const code = new CodePromise(this.api, abi, wasm);
 
       // Prepare constructor arguments
-      let args = config.args;
+      let args = [...config.args];
       if (contractKey === 'dao' && this.deployedAddresses.dalla) {
-        // DAO needs DALLA token address
-        args = [this.deployedAddresses.dalla];
+        // Set DALLA token address (4th param — index 3)
+        args[3] = this.deployedAddresses.dalla;
       }
 
-      // Estimate gas
-      const { gasRequired, storageDeposit } = await code.tx[config.constructor]({
-        gasLimit: this.api.registry.createType('WeightV2', {
-          refTime: -1,
-          proofSize: -1
-        }),
-        storageDepositLimit: null
-      }, ...args).dryRun(this.signer.address);
-
-      console.log(`   ⛽ Gas required: ${gasRequired.refTime.toHuman()}`);
-      console.log(`   💰 Storage deposit: ${storageDeposit.isCharge ? storageDeposit.asCharge.toHuman() : '0'}`);
+      // Use generous gas limits (dryRun requires --rpc-methods=unsafe on node)
+      const gasLimit = this.api.registry.createType('WeightV2', {
+        refTime: BigInt(50_000_000_000),
+        proofSize: BigInt(800_000)
+      });
 
       // Deploy
       console.log(`   🚀 Deploying contract...`);
       const tx = code.tx[config.constructor]({
-        gasLimit: gasRequired,
-        storageDepositLimit: storageDeposit.isCharge ? storageDeposit.asCharge : null
+        gasLimit,
+        storageDepositLimit: null,
+        ...(config.value ? { value: config.value } : {})
       }, ...args);
 
       return new Promise((resolve, reject) => {
-        tx.signAndSend(this.signer, ({ status, contract, dispatchError }) => {
+        let resolved = false;
+        tx.signAndSend(this.signer, async ({ status, contract, events, dispatchError }) => {
+          if (resolved) return;
+
           if (dispatchError) {
             if (dispatchError.isModule) {
               const decoded = this.api.registry.findMetaError(dispatchError.asModule);
@@ -198,23 +198,59 @@ class Deployer {
             } else {
               console.error(`❌ Error: ${dispatchError.toString()}`);
             }
+            resolved = true;
             reject(new Error('Deployment failed'));
           } else if (status.isInBlock) {
-            console.log(`   ⏳ Included in block: ${status.asInBlock.toHex()}`);
-          } else if (status.isFinalized) {
+            // Resolve on InBlock — GRANDPA finality may lag on single-node dev chains
+            const blockHash = status.asInBlock.toHex();
+            console.log(`   ⏳ Included in block: ${blockHash}`);
+
+            let address = null;
+            let codeHash = null;
+
             if (contract) {
-              console.log(`   ✅ Deployed at: ${contract.address.toString()}`);
-              console.log(`   📋 Code hash: ${contract.codeHash.toHex()}`);
+              address = contract.address.toString();
+              codeHash = contract.codeHash.toHex();
+            } else {
+              // Query system events at the block — more reliable than callback events
+              // when extrinsic VEC decoding fails
+              try {
+                const blockEvents = await this.api.query.system.events.at(blockHash);
+                for (const record of blockEvents) {
+                  const { event } = record;
+                  if (event.section === 'contracts' && event.method === 'Instantiated') {
+                    address = event.data[1]?.toString() || event.data.contract?.toString();
+                    console.log(`   📎 Found address from block events: ${address}`);
+                  }
+                  if (event.section === 'contracts' && event.method === 'CodeStored') {
+                    codeHash = event.data[0]?.toHex() || event.data.codeHash?.toHex();
+                  }
+                }
+              } catch (e) {
+                console.log(`   ⚠️  Could not query block events: ${e.message}`);
+              }
+            }
 
+            if (address) {
+              console.log(`   ✅ Deployed at: ${address}`);
+              if (codeHash) console.log(`   📋 Code hash: ${codeHash}`);
+              this.deployedAddresses[contractKey] = address;
+            } else {
+              console.log(`   ⚠️  Contract included in block but address not found in events`);
+            }
+
+            resolved = true;
+            resolve({ address, codeHash, blockHash });
+          } else if (status.isFinalized) {
+            if (contract && !resolved) {
+              console.log(`   ✅ Finalized at: ${contract.address.toString()}`);
               this.deployedAddresses[contractKey] = contract.address.toString();
-
+              resolved = true;
               resolve({
                 address: contract.address.toString(),
                 codeHash: contract.codeHash.toHex(),
                 blockHash: status.asFinalized.toHex()
               });
-            } else {
-              reject(new Error('Contract deployed but address not available'));
             }
           }
         });

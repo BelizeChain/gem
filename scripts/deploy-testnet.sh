@@ -50,11 +50,13 @@ if [ "$MISSING" -eq 1 ]; then
 fi
 echo "✅ Contract artifacts found"
 
-# Check node_modules
-if [ ! -d "$PROJECT_DIR/node_modules" ]; then
+# Check node_modules (SDK contains the @polkadot dependencies)
+SDK_DIR="$PROJECT_DIR/sdk"
+if [ ! -d "$SDK_DIR/node_modules" ]; then
     echo "📦 Installing Node.js dependencies..."
-    (cd "$PROJECT_DIR" && npm install --no-audit --no-fund)
+    (cd "$SDK_DIR" && npm install --no-audit --no-fund)
 fi
+export NODE_PATH="$SDK_DIR/node_modules"
 echo "✅ Node.js dependencies ready"
 echo ""
 
