@@ -10,11 +10,12 @@
 #   bash scripts/deploy-testnet.sh                  # Uses //Alice account
 #   DEPLOY_ACCOUNT="//Bob" bash scripts/deploy-testnet.sh
 #
-# For in-cluster (AKS) deployment, the WS URL defaults to:
-#   ws://belizechain-node.belizechain.svc.cluster.local:9944
+# For Ceiba testnet deployment, the WS URL defaults to:
+#   ws://100.81.45.25:9944
 #
 # Override with:
 #   BLOCKCHAIN_WS_URL="ws://custom-node:9944" bash scripts/deploy-testnet.sh
+#   BELIZECHAIN_TESTNET_URL="ws://custom-node:9944" bash scripts/deploy-testnet.sh
 
 set -euo pipefail
 
@@ -66,16 +67,10 @@ echo ""
 
 export DEPLOY_ACCOUNT="${DEPLOY_ACCOUNT:-//Alice}"
 
-# Default to AKS internal DNS; override with BLOCKCHAIN_WS_URL
+# Default to the current Ceiba node; override with BLOCKCHAIN_WS_URL
 if [ -z "${BLOCKCHAIN_WS_URL:-}" ]; then
-    # Try local node first (for dev machines), fall back to AKS internal DNS
-    if command -v nc &>/dev/null && nc -z localhost 9944 2>/dev/null; then
-        export BLOCKCHAIN_WS_URL="ws://localhost:9944"
-        echo "🔗 Using local node: $BLOCKCHAIN_WS_URL"
-    else
-        export BLOCKCHAIN_WS_URL="ws://belizechain-node.belizechain.svc.cluster.local:9944"
-        echo "🔗 Using AKS testnet node: $BLOCKCHAIN_WS_URL"
-    fi
+    export BLOCKCHAIN_WS_URL="${BELIZECHAIN_TESTNET_URL:-ws://100.81.45.25:9944}"
+    echo "🔗 Using Ceiba testnet node: $BLOCKCHAIN_WS_URL"
 else
     echo "🔗 Using custom endpoint: $BLOCKCHAIN_WS_URL"
 fi

@@ -7,8 +7,8 @@
 const { GemSDK } = require('../index');
 
 // CONFIGURATION - Update these values
-const BELINFT_CONTRACT = '5Ho6KsLW7F8vBUWg3uz97sTu6iwxr665ucLtFzn2i8riFQL7';
-const NODE_URL = 'ws://localhost:9944';
+const BELINFT_CONTRACT = process.env.BELINFT_CONTRACT_ADDRESS || 'REPLACE_WITH_BELINFT_CONTRACT_ADDRESS';
+const NODE_URL = process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944';
 
 async function main() {
   console.log('🎨 BeliNFT Minting Example\n');

@@ -84,7 +84,9 @@ cargo contract instantiate \
     --constructor new \
     --args "arg1" "arg2" \
     --suri //Alice \
-    --url ws://localhost:9944
+    --url ws://100.81.45.25:9944
+
+# For local development, switch the URL back to ws://localhost:9944
 
 # 4. Use with SDK
 npm install @belizechain/gem-sdk
@@ -97,9 +99,10 @@ node sdk/examples/your-example.js
 
 ### Path 1: Smart Contract Developer
 1. [Quick Reference](guides/QUICK_REFERENCE.md) - Understand the ecosystem
-2. [Tutorial Series](guides/TUTORIAL.md) - Build 5 contracts
-3. [Best Practices](guides/BEST_PRACTICES.md) - Write production code
-4. [Security Checklist](guides/SECURITY_AUDIT_CHECKLIST.md) - Audit your work
+2. [Ceiba Deploy Handoff](guides/CEIBA_DEPLOY_HANDOFF.md) - Current funded-signer deployment workflow
+3. [Tutorial Series](guides/TUTORIAL.md) - Build 5 contracts
+4. [Best Practices](guides/BEST_PRACTICES.md) - Write production code
+5. [Security Checklist](guides/SECURITY_AUDIT_CHECKLIST.md) - Audit your work
 
 ### Path 2: DApp Developer
 1. [SDK Documentation](sdk/README.md) - Learn the SDK

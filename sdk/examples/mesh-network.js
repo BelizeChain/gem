@@ -5,9 +5,11 @@
 
 const { GemSDK, MeshNetworkSDK, MeshNodeRole, MeshNodeType } = require('@belizechain/gem-sdk');
 
+const NODE_URL = process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944';
+
 async function main() {
   // 1. Connect to BelizeChain
-  const sdk = new GemSDK('ws://localhost:9944');
+  const sdk = new GemSDK(NODE_URL);
   await sdk.connect();
 
   // 2. Initialize mesh network client

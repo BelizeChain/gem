@@ -9,7 +9,9 @@
  *   node scripts/deploy.js --contract=all --network=testnet --account=//Alice
  *
  * Environment Variables:
- *   BELIZECHAIN_NODE_URL - WebSocket URL (default: ws://localhost:9944)
+ *   BLOCKCHAIN_WS_URL - Preferred WebSocket URL override
+ *   BELIZECHAIN_NODE_URL - Local WebSocket URL (default: ws://localhost:9944)
+ *   BELIZECHAIN_TESTNET_URL - Testnet WebSocket URL (default: ws://100.81.45.25:9944)
  *   DEPLOY_ACCOUNT - Account URI (default: //Alice for dev)
  *   DEPLOY_PASSWORD - Account password (optional)
  */
@@ -66,7 +68,7 @@ const NETWORKS = {
     account: process.env.DEPLOY_ACCOUNT || '//Alice'
   },
   testnet: {
-    url: process.env.BLOCKCHAIN_WS_URL || process.env.BELIZECHAIN_TESTNET_URL || 'ws://belizechain-node.belizechain.svc.cluster.local:9944',
+    url: process.env.BLOCKCHAIN_WS_URL || process.env.BELIZECHAIN_TESTNET_URL || 'ws://100.81.45.25:9944',
     account: process.env.DEPLOY_ACCOUNT || null
   },
   mainnet: {
@@ -337,7 +339,7 @@ Options:
   --help, -h          Show this help
 
 Environment Variables:
-  BLOCKCHAIN_WS_URL          WebSocket URL (preferred, set by K8s Job)
+  BLOCKCHAIN_WS_URL          WebSocket URL override (preferred)
   BELIZECHAIN_NODE_URL       WebSocket URL for local node
   BELIZECHAIN_TESTNET_URL    WebSocket URL for testnet
   BELIZECHAIN_MAINNET_URL    WebSocket URL for mainnet

@@ -36,13 +36,17 @@ yarn add @belizechain/gem-sdk @polkadot/api @polkadot/api-contract
 
 ## Quick Start
 
+For the active Ceiba environment, set `BLOCKCHAIN_WS_URL=ws://100.81.45.25:9944`. The SDK constructor still defaults to localhost for local development.
+Replace `DALLA_CONTRACT_ADDRESS` and `BELINFT_CONTRACT_ADDRESS` in the examples below with addresses from your current Ceiba deployment output.
+
 ### 1. Connect to BelizeChain
 
 ```javascript
 const { GemSDK } = require('@belizechain/gem-sdk');
 
 // Create SDK instance
-const sdk = new GemSDK('ws://localhost:9944');
+const nodeUrl = process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944';
+const sdk = new GemSDK(nodeUrl);
 
 // Connect to node
 await sdk.connect();
@@ -56,7 +60,7 @@ const alice = sdk.getAccount('//Alice');
 
 // Transfer 100 DALLA
 await sdk.dallaTransfer(
-  '5GD4w5...NVsNB', // DALLA contract address
+  process.env.DALLA_CONTRACT_ADDRESS || 'DALLA_CONTRACT_ADDRESS',
   alice, // Sender
   '5FHneW...JM694ty', // Recipient
   100000000000000 // Amount (100 DALLA with 12 decimals)
@@ -70,7 +74,7 @@ const alice = sdk.getAccount('//Alice');
 
 // Mint NFT with IPFS URI
 await sdk.nftMint(
-  '5Ho6Ks...iFQL7', // BeliNFT contract address
+  process.env.BELINFT_CONTRACT_ADDRESS || 'BELINFT_CONTRACT_ADDRESS',
   alice, // Minter (owner)
   '5FHneW...JM694ty', // Recipient
   'ipfs://QmYourImageHash' // Token URI
@@ -120,7 +124,7 @@ Create a new SDK instance.
 
 **Parameters:**
 
-- `nodeUrl` (optional): WebSocket URL (default: `ws://localhost:9944`)
+- `nodeUrl` (optional): WebSocket URL (default: `ws://localhost:9944`; use `ws://100.81.45.25:9944` for the current Ceiba node)
 
 ---
 
@@ -188,7 +192,7 @@ Transfer DALLA tokens.
 
 ```javascript
 await sdk.dallaTransfer(
-  '5GD4w5...NVsNB',
+  process.env.DALLA_CONTRACT_ADDRESS || 'DALLA_CONTRACT_ADDRESS',
   alice,
   bob.address,
   1000000000000 // 1 DALLA
@@ -202,7 +206,10 @@ await sdk.dallaTransfer(
 Get token balance.
 
 ```javascript
-const balance = await sdk.dallaBalanceOf('5GD4w5...NVsNB', alice.address);
+const balance = await sdk.dallaBalanceOf(
+  process.env.DALLA_CONTRACT_ADDRESS || 'DALLA_CONTRACT_ADDRESS',
+  alice.address
+);
 ```
 
 ---
@@ -212,7 +219,9 @@ const balance = await sdk.dallaBalanceOf('5GD4w5...NVsNB', alice.address);
 Get token metadata.
 
 ```javascript
-const metadata = await sdk.dallaMetadata('5GD4w5...NVsNB');
+const metadata = await sdk.dallaMetadata(
+  process.env.DALLA_CONTRACT_ADDRESS || 'DALLA_CONTRACT_ADDRESS'
+);
 console.log('Name:', metadata.name);
 console.log('Symbol:', metadata.symbol);
 console.log('Decimals:', metadata.decimals);
@@ -228,7 +237,12 @@ console.log('Total Supply:', metadata.totalSupply);
 Mint new NFT.
 
 ```javascript
-await sdk.nftMint('5Ho6Ks...iFQL7', alice, bob.address, 'ipfs://Qm...');
+await sdk.nftMint(
+  process.env.BELINFT_CONTRACT_ADDRESS || 'BELINFT_CONTRACT_ADDRESS',
+  alice,
+  bob.address,
+  'ipfs://Qm...'
+);
 ```
 
 ---
@@ -238,7 +252,10 @@ await sdk.nftMint('5Ho6Ks...iFQL7', alice, bob.address, 'ipfs://Qm...');
 Get NFT owner.
 
 ```javascript
-const owner = await sdk.nftOwnerOf('5Ho6Ks...iFQL7', 1);
+const owner = await sdk.nftOwnerOf(
+  process.env.BELINFT_CONTRACT_ADDRESS || 'BELINFT_CONTRACT_ADDRESS',
+  1
+);
 ```
 
 ---
@@ -248,7 +265,10 @@ const owner = await sdk.nftOwnerOf('5Ho6Ks...iFQL7', 1);
 Get NFT metadata URI.
 
 ```javascript
-const uri = await sdk.nftTokenUri('5Ho6Ks...iFQL7', 1);
+const uri = await sdk.nftTokenUri(
+  process.env.BELINFT_CONTRACT_ADDRESS || 'BELINFT_CONTRACT_ADDRESS',
+  1
+);
 console.log('IPFS URI:', uri);
 ```
 
@@ -338,7 +358,8 @@ const { GemSDK } = require('@belizechain/gem-sdk');
 
 async function main() {
   // 1. Connect
-  const sdk = new GemSDK('ws://localhost:9944');
+  const nodeUrl = process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944';
+  const sdk = new GemSDK(nodeUrl);
   await sdk.connect();
 
   // 2. Get accounts
@@ -351,14 +372,19 @@ async function main() {
 
   // 4. Transfer DALLA tokens
   await sdk.dallaTransfer(
-    '5GD4w5...NVsNB',
+    process.env.DALLA_CONTRACT_ADDRESS || 'DALLA_CONTRACT_ADDRESS',
     alice,
     bob.address,
     1000000000000000 // 1000 DALLA
   );
 
   // 5. Mint NFT
-  await sdk.nftMint('5Ho6Ks...iFQL7', alice, bob.address, 'ipfs://QmYourHash');
+  await sdk.nftMint(
+    process.env.BELINFT_CONTRACT_ADDRESS || 'BELINFT_CONTRACT_ADDRESS',
+    alice,
+    bob.address,
+    'ipfs://QmYourHash'
+  );
 
   // 6. Create DAO proposal
   const proposalId = await sdk.daoCreateProposal(
@@ -391,22 +417,28 @@ The SDK includes full TypeScript definitions:
 ```typescript
 import { GemSDK } from '@belizechain/gem-sdk';
 
-const sdk: GemSDK = new GemSDK('ws://localhost:9944');
+const nodeUrl = process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944';
+const sdk: GemSDK = new GemSDK(nodeUrl);
 await sdk.connect();
 
-const balance: string = await sdk.dallaBalanceOf('5GD4w5...NVsNB', alice.address);
+const balance: string = await sdk.dallaBalanceOf(
+  process.env.DALLA_CONTRACT_ADDRESS || 'DALLA_CONTRACT_ADDRESS',
+  alice.address
+);
 ```
 
 ---
 
 ## Contract Addresses
 
+Current Ceiba note: the previously documented DALLA and BeliNFT addresses were rechecked on 2026-04-26 and are not present on the active Ceiba chain. Populate this table from fresh deployment output before treating any address as current.
+
 **BelizeChain Testnet:**
 
 | Contract    | Address                                            |
 | ----------- | -------------------------------------------------- |
-| DALLA Token | `5GD4w5DP6VUBtFt7F9LB9EDzGcpbzFwvR9CWVNVsNB`       |
-| BeliNFT     | `5Ho6KsLW7F8vBUWg3uz97sTu6iwxr665ucLtFzn2i8riFQL7` |
+| DALLA Token | Pending Ceiba revalidation                         |
+| BeliNFT     | Pending Ceiba revalidation                         |
 | Simple DAO  | _Awaiting deployment_                              |
 | Faucet      | _Awaiting deployment_                              |
 

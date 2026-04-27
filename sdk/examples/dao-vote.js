@@ -7,8 +7,8 @@
 const { GemSDK } = require('../index');
 
 // CONFIGURATION - Update these values
-const DAO_CONTRACT = '5ExampleDAOAddress'; // Update when deployed
-const NODE_URL = 'ws://localhost:9944';
+const DAO_CONTRACT = process.env.DAO_CONTRACT_ADDRESS || 'REPLACE_WITH_DAO_CONTRACT_ADDRESS';
+const NODE_URL = process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944';
 
 async function main() {
   console.log('🗳️  DAO Governance Example\n');

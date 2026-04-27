@@ -74,9 +74,11 @@ cp dex/router/target/ink/belizex_router.json sdk/contracts/
 
 ### Option 1: Using Polkadot.js Apps UI
 
+Current Ceiba note: use `ws://100.81.45.25:9944` for the active Ceiba node, or keep `ws://localhost:9944` for local development.
+
 1. **Connect to BelizeChain**:
    - Navigate to https://polkadot.js.org/apps/
-   - Settings → Connect to custom endpoint: `ws://localhost:9944` (or your BelizeChain node)
+    - Settings → Connect to custom endpoint: `ws://100.81.45.25:9944` for Ceiba, or `ws://localhost:9944` for local development
 
 2. **Deploy Factory Contract**:
    - Developer → Contracts → Upload & Deploy Code
@@ -106,13 +108,13 @@ cargo contract instantiate factory/Cargo.toml \
   --constructor new \
   --args <FEE_TO_SETTER_ADDRESS> \
   --suri //Alice \
-  --url ws://localhost:9944 \
+    --url ws://100.81.45.25:9944 \
   --execute
 
 # Upload Pair code (get code hash)
 cargo contract upload pair/Cargo.toml \
   --suri //Alice \
-  --url ws://localhost:9944 \
+    --url ws://100.81.45.25:9944 \
   --execute
 
 # Deploy Router
@@ -120,8 +122,10 @@ cargo contract instantiate router/Cargo.toml \
   --constructor new \
   --args <FACTORY_ADDRESS> <WBZC_ADDRESS> \
   --suri //Alice \
-  --url ws://localhost:9944 \
+    --url ws://100.81.45.25:9944 \
   --execute
+
+# For local development, switch the URL back to ws://localhost:9944
 ```
 
 ### Option 3: Using SDK Deployment Script
@@ -135,7 +139,7 @@ const fs = require('fs');
 
 async function main() {
     // Connect
-    const provider = new WsProvider('ws://localhost:9944');
+    const provider = new WsProvider(process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944');
     const api = await ApiPromise.create({ provider });
     
     const keyring = new Keyring({ type: 'sr25519' });
@@ -224,7 +228,7 @@ const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
 
 async function createPair() {
     const api = await ApiPromise.create({ 
-        provider: new WsProvider('ws://localhost:9944') 
+        provider: new WsProvider(process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944') 
     });
     
     const dex = new BelizeXSDK(api, {

@@ -14,12 +14,14 @@
 /// # Build the contract
 /// cargo contract build
 ///
-/// # Deploy to local node
+/// # Deploy to BelizeChain node
 /// cargo contract instantiate \
 ///     --constructor new \
 ///     --args "Bienvenidos a BelizeChain!" \
 ///     --suri //Alice \
-///     --url ws://localhost:9944
+///     --url ws://100.81.45.25:9944
+///
+/// # For local development, switch the URL back to ws://localhost:9944
 /// ```
 
 #[ink::contract]

@@ -11,9 +11,11 @@
 const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
 const { BelizeXSDK } = require('../dex');
 
+const NODE_URL = process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944';
+
 async function main() {
   // Connect to BelizeChain
-  const provider = new WsProvider('ws://localhost:9944');
+  const provider = new WsProvider(NODE_URL);
   const api = await ApiPromise.create({ provider });
 
   console.log('✅ Connected to BelizeChain');

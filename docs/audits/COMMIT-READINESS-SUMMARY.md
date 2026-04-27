@@ -4,6 +4,8 @@
 **Repository:** BelizeChain/gem
 **Branch:** main
 
+Current Ceiba note: this document is an audit campaign snapshot, not a live Ceiba deployment status page. Revalidate contract addresses, deployer funding, and current chain state against the active Ceiba node before treating any deployment statement here as current.
+
 ---
 
 ## Audit Campaign Overview

@@ -9,7 +9,8 @@ npm install @belizechain/gem-sdk
 
 # Use in your project
 const { GemSDK } = require('@belizechain/gem-sdk');
-const sdk = new GemSDK('ws://localhost:9944');
+const nodeUrl = process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944';
+const sdk = new GemSDK(nodeUrl);
 await sdk.connect();
 ```
 

@@ -9,9 +9,11 @@
 | Auditor       | Copilot (AI-assisted)                              |
 | Date          | 2026-03-15                                         |
 | Gate          | AUDIT-GEM-02 (Storage Layout) — **PASSED**         |
-| Deployment    | LIVE — `5Ho6Ks...iFQL7`                            |
+| Deployment    | Historical audit snapshot — `5Ho6Ks...iFQL7`      |
 | Status        | **COMPLETE — FULLY REMEDIATED**                     |
 | Verdict       | **PASS** — 17/17 findings resolved (see §6)         |
+
+Current Ceiba note: this address was part of the audit-era deployment snapshot. A live check on 2026-04-26 against `ws://100.81.45.25:9944` did not find this contract on the active Ceiba chain, so revalidate before reuse.
 
 ---
 

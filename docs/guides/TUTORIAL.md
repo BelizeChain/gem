@@ -140,10 +140,11 @@ cargo contract instantiate \
     --constructor new \
     --args "Hello BelizeChain!" \
     --suri //Alice \
-    --url ws://localhost:9944 \
+    --url ws://100.81.45.25:9944 \
     --skip-confirm \
     --execute
 
+# For local development, switch the URL back to ws://localhost:9944
 # Copy the contract address from output!
 ```
 

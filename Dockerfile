@@ -68,5 +68,5 @@ COPY --from=builder /build/dex/target/ink/belizex_router/ artifacts/dex_router/
 
 # Default: run the deployment script
 # Inside Docker, artifacts are at /app/artifacts/<name>/
-# BLOCKCHAIN_WS_URL env var is set by the K8s Job manifest
+# Set BLOCKCHAIN_WS_URL when targeting Ceiba or another external node RPC
 CMD ["node", "scripts/deploy.js"]

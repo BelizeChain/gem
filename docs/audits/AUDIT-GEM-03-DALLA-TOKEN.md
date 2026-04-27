@@ -10,7 +10,9 @@
 | Prerequisite    | AUDIT-GEM-02 — **PASS** (2025-07-21)               |
 | Status          | **COMPLETE — ALL FINDINGS REMEDIATED**             |
 | Verdict         | **PASS** — see §6                                  |
-| Deployment      | LIVE — `5GD4w5...NVsNB`                            |
+| Deployment      | Historical audit snapshot — `5GD4w5...NVsNB`      |
+
+Current Ceiba note: this address was part of the audit-era deployment snapshot. A live check on 2026-04-26 against `ws://100.81.45.25:9944` did not find this contract on the active Ceiba chain, so revalidate before reuse.
 
 ---
 

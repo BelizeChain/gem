@@ -6,12 +6,15 @@
 
 const { GemSDK } = require('../index');
 
+const NODE_URL = process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944';
+
 async function main() {
   console.log('🔗 Testing BelizeChain connection...\n');
+  console.log(`Endpoint: ${NODE_URL}\n`);
 
   try {
     // Create SDK instance
-    const sdk = new GemSDK('ws://localhost:9944');
+    const sdk = new GemSDK(NODE_URL);
 
     // Connect to node
     await sdk.connect();
@@ -47,7 +50,8 @@ async function main() {
     console.log('\n✅ Connection test successful!\n');
   } catch (error) {
     console.error('\n❌ Connection failed:', error.message);
-    console.error('\nMake sure BelizeChain node is running:');
+    console.error('\nFor Ceiba, confirm ws://100.81.45.25:9944 is reachable.');
+    console.error('For local development, start a node with:');
     console.error('   ./target/release/belizechain-node --dev --tmp\n');
     process.exit(1);
   }

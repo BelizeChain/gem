@@ -55,6 +55,7 @@ The GEM brings programmable smart contracts to BelizeChain with unique capabilit
 
 - **[Quick Reference](docs/guides/QUICK_REFERENCE.md)** - Fast lookup for all contracts and features
 - **[Tutorial Series](docs/guides/TUTORIAL.md)** - 5 step-by-step guides (beginner to advanced)
+- **[Ceiba Deploy Handoff](docs/guides/CEIBA_DEPLOY_HANDOFF.md)** - Exact funded-signer workflow for current Ceiba contract deployment
 - **[Contributing Guide](docs/guides/CONTRIBUTING.md)** - How to contribute to the project
 - **[Best Practices](docs/guides/BEST_PRACTICES.md)** - Development patterns and optimization
 - **[SDK Documentation](docs/sdk/README.md)** - JavaScript/TypeScript SDK
@@ -75,12 +76,13 @@ npm install @belizechain/gem-sdk @polkadot/api @polkadot/api-contract
 ```javascript
 const { GemSDK } = require('@belizechain/gem-sdk');
 
-const sdk = new GemSDK('ws://localhost:9944');
+const nodeUrl = process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944';
+const sdk = new GemSDK(nodeUrl);
 await sdk.connect();
 
 // Transfer 100 DALLA
 await sdk.dallaTransfer(
-    '5GD4w5...NVsNB',
+    process.env.DALLA_CONTRACT_ADDRESS || 'DALLA_CONTRACT_ADDRESS',
     alice,
     bob.address,
     100000000000000
@@ -95,14 +97,16 @@ See [SDK examples](sdk/examples/) for complete code samples.
 2. **Intermediate** (2 hours): Follow [Tutorial Series](docs/guides/TUTORIAL.md) → Build tokens, NFTs, DAOs
 3. **Advanced** (ongoing): Read [Best Practices](docs/guides/BEST_PRACTICES.md) → Optimization and patterns
 
-### 📊 Production Contracts
+### 📊 Contract Deployment Status
+
+Current Ceiba validation note: the historical DALLA and BeliNFT addresses previously documented here are not present on the current Ceiba chain. Re-deploy or re-verify contract addresses before publishing them as active.
 
 | Contract | Address | Size | Status |
 |----------|---------|------|--------|
-| **DALLA Token (PSP22)** | `5GD4w5...NVsNB` | 10.5 KB | ✅ Live |
-| **BeliNFT (PSP34)** | `5Ho6Ks...iFQL7` | 14.9 KB | ✅ Live |
-| **Simple DAO** | TBD | 12.9 KB | 🟡 Built |
-| **Faucet** | TBD | 7.5 KB | 🟡 Built |
+| **DALLA Token (PSP22)** | Pending Ceiba revalidation | 10.5 KB | 🟡 Needs redeploy verification |
+| **BeliNFT (PSP34)** | Pending Ceiba revalidation | 14.9 KB | 🟡 Needs redeploy verification |
+| **Simple DAO** | Pending Ceiba deployment | 12.9 KB | 🟡 Built |
+| **Faucet** | Pending Ceiba deployment | 7.5 KB | 🟡 Built |
 
 ### 🌐 Community
 
@@ -139,6 +143,8 @@ cargo contract build
 
 ### Deploy to BelizeChain
 
+Current Ceiba deployment note: Gem is deployed on-chain through `pallet-contracts`, not as a standalone Docker Compose service. For the active Ceiba environment, use the node RPC at `ws://100.81.45.25:9944` unless you are intentionally targeting a different endpoint.
+
 ```bash
 # Start local node
 ./target/release/belizechain-node --dev --tmp
@@ -148,7 +154,9 @@ cargo contract instantiate \
     --constructor new \
     --args "Hello BelizeChain" \
     --suri //Alice \
-    --url ws://localhost:9944
+    --url ws://100.81.45.25:9944
+
+# For local development, switch the URL back to ws://localhost:9944
 ```
 
 ## Example Contracts
