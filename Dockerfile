@@ -41,8 +41,8 @@ RUN for contract in \
     cargo contract build --release --manifest-path "$contract/Cargo.toml" || exit 1; \
   done
 
-# Stage 2: Deploy runtime (Node.js + contract artifacts)
-FROM node:20-slim
+# Stage 2: Deploy runtime (Node.js 24 + contract artifacts)
+FROM node:24-slim
 
 WORKDIR /app
 
