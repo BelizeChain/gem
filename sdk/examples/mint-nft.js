@@ -7,7 +7,8 @@
 const { GemSDK } = require('../index');
 
 // CONFIGURATION - Update these values
-const BELINFT_CONTRACT = process.env.BELINFT_CONTRACT_ADDRESS || 'REPLACE_WITH_BELINFT_CONTRACT_ADDRESS';
+const BELINFT_CONTRACT =
+  process.env.BELINFT_CONTRACT_ADDRESS || 'REPLACE_WITH_BELINFT_CONTRACT_ADDRESS';
 const NODE_URL = process.env.BLOCKCHAIN_WS_URL || 'ws://100.81.45.25:9944';
 
 async function main() {

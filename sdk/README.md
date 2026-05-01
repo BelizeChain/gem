@@ -435,12 +435,12 @@ Current Ceiba note: the previously documented DALLA and BeliNFT addresses were r
 
 **BelizeChain Testnet:**
 
-| Contract    | Address                                            |
-| ----------- | -------------------------------------------------- |
-| DALLA Token | Pending Ceiba revalidation                         |
-| BeliNFT     | Pending Ceiba revalidation                         |
-| Simple DAO  | _Awaiting deployment_                              |
-| Faucet      | _Awaiting deployment_                              |
+| Contract    | Address                    |
+| ----------- | -------------------------- |
+| DALLA Token | Pending Ceiba revalidation |
+| BeliNFT     | Pending Ceiba revalidation |
+| Simple DAO  | _Awaiting deployment_      |
+| Faucet      | _Awaiting deployment_      |
 
 ---
 
