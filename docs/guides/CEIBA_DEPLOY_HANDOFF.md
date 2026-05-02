@@ -7,14 +7,23 @@ This handoff is for the current Ceiba contract deployment path for GEM.
 - Ceiba RPC is healthy at `ws://100.81.45.25:9944`.
 - `pallet-contracts` is available on the current Ceiba node.
 - GEM deployable artifacts build successfully from this repo.
-- Standard dev accounts like `//Alice` are **not funded** on the active Ceiba chain.
-- A live on-chain sudo key exists, but the signer material is not available in this repo.
+- The current Ceiba reset chain has a funded testnet deployer available as `//treasury`.
+- Primary GEM contracts were deployed and verified on 2026-05-02.
 
-Because of that, live deployment is blocked until Ceiba ops funds a dedicated deployer account or provides an existing funded signer through a secure out-of-band path.
+Current verified addresses:
+
+```dotenv
+DALLA_CONTRACT_ADDRESS=r1SAvDb2f5iFbafWL87rE1jP6QV3qCV5xtK8b1QXuqKpGknj5
+BELINFT_CONTRACT_ADDRESS=r1Wywor1ittVCyZeYaA9hweBwuDiXLC2UdLNQm4oUB1ub8qyN
+DAO_CONTRACT_ADDRESS=r1VnpeWtfLmtZ2W2UJhYXSLoHhwo7tAY48RZyVirRu5ucLi7i
+FAUCET_CONTRACT_ADDRESS=r1TDXUdxgeLC5BAkFQeZnZNSAX67FwRAaavmG19TzPtc2Szcg
+```
+
+Redeploy only after a chain reset, artifact change, or explicit address rotation.
 
 ## Inputs Ops Must Provide
 
-Provide these outside git, never commit them:
+For a future redeploy, provide these outside git, never commit production secrets:
 
 - `DEPLOY_ACCOUNT`: funded signer URI, mnemonic, or other secret accepted by `@polkadot/keyring`
 - `BLOCKCHAIN_WS_URL`: `ws://100.81.45.25:9944`
@@ -73,7 +82,7 @@ Deploy all four primary contracts:
 
 ```bash
 export BLOCKCHAIN_WS_URL=ws://100.81.45.25:9944
-export DEPLOY_ACCOUNT='<FUNDED_SIGNER_URI>'
+export DEPLOY_ACCOUNT='//treasury'
 
 node scripts/deploy.js --contract=all --network=testnet --account="$DEPLOY_ACCOUNT"
 ```
@@ -82,7 +91,7 @@ Or use the wrapper:
 
 ```bash
 export BLOCKCHAIN_WS_URL=ws://100.81.45.25:9944
-export DEPLOY_ACCOUNT='<FUNDED_SIGNER_URI>'
+export DEPLOY_ACCOUNT='//treasury'
 
 bash scripts/deploy-testnet.sh
 ```
@@ -138,5 +147,5 @@ NODE
 Send this to whoever controls Ceiba funding:
 
 ```text
-Gem is build-ready and Ceiba RPC is healthy at ws://100.81.45.25:9944, but the standard dev deployers are unfunded on the live chain. Please fund a dedicated GEM deployer account with enough native balance for contract upload and instantiation, then share the funded signer with the GEM deployment operator out-of-band. After funding, run the commands in docs/guides/CEIBA_DEPLOY_HANDOFF.md from the gem repo and write the resulting addresses back into .env.testnet.
+Gem is deployed on the current Ceiba testnet and verified through contracts.contractInfoOf. If Ceiba is reset again or artifacts change, redeploy from the gem repo with a funded deployer, then write the resulting addresses back into .env.testnet and the UI/infra env wiring.
 ```

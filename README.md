@@ -103,10 +103,10 @@ Current Ceiba validation note: the historical DALLA and BeliNFT addresses previo
 
 | Contract | Address | Size | Status |
 |----------|---------|------|--------|
-| **DALLA Token (PSP22)** | Pending Ceiba revalidation | 10.5 KB | 🟡 Needs redeploy verification |
-| **BeliNFT (PSP34)** | Pending Ceiba revalidation | 14.9 KB | 🟡 Needs redeploy verification |
-| **Simple DAO** | Pending Ceiba deployment | 12.9 KB | 🟡 Built |
-| **Faucet** | Pending Ceiba deployment | 7.5 KB | 🟡 Built |
+| **DALLA Token (PSP22)** | `r1SAvDb2f5iFbafWL87rE1jP6QV3qCV5xtK8b1QXuqKpGknj5` | 10.5 KB | ✅ Verified on Ceiba |
+| **BeliNFT (PSP34)** | `r1Wywor1ittVCyZeYaA9hweBwuDiXLC2UdLNQm4oUB1ub8qyN` | 14.9 KB | ✅ Verified on Ceiba |
+| **Simple DAO** | `r1VnpeWtfLmtZ2W2UJhYXSLoHhwo7tAY48RZyVirRu5ucLi7i` | 12.9 KB | ✅ Verified on Ceiba |
+| **Faucet** | `r1TDXUdxgeLC5BAkFQeZnZNSAX67FwRAaavmG19TzPtc2Szcg` | 7.5 KB | ✅ Verified on Ceiba |
 
 ### 🌐 Community
 
