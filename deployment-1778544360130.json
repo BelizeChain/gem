@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-05-12T00:06:00.128Z",
+  "network": "ws://100.81.45.25:9944",
+  "deployer": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+  "contracts": {
+    "dalla": {
+      "address": "r1Vkg9k4vy7YcgSES8HMPrbtAsr6QWZcCixDQ19saBYfQv9me",
+      "codeHash": "0x1f3bd26b278ae4ddef55c8831efca5782d339f6dd392699188db0046ecb8adeb",
+      "blockHash": "0x494f6ee5e09e5227a6bec0be52776d91bb0965ed4b50efd07be61fcdb09adf2a"
+    },
+    "belinft": {
+      "address": "r1V67KtGB3i2mL4421WSd5WVfWPRuwwUVu6VMwDYfzobjVKHE",
+      "codeHash": "0x16d68a8a7d266de368604b755c8e1d193b984139b061efb2b750878cd74a8530",
+      "blockHash": "0x73119952fc2e035ae8f1b1ec56efed7b26d86bcc1d5f3ce9e61e0972feb56f58"
+    },
+    "dao": {
+      "address": "r1WcVzmmX6bXvX4wpoR1W8ffA3Chr8UU7PtxXE8JQG4RZkzSK",
+      "codeHash": "0x803525c58378300d02867eb00be328297e80cbaff7b01616742932b31b33a13b",
+      "blockHash": "0x59f50bf9b7d6b0b5c6bd3ceb8b3096065b5092711f83aab8ff53caf9d2bc4013"
+    },
+    "faucet": {
+      "address": "r1WXkqkVdPb4ap9SYPi7zdKa2PXjYUGzve5HsPn6FaezKRJvX",
+      "codeHash": "0x4a58f600fb4761b62db946f4c0e4cb87d3d88fcbbf884658ddceb70bb49ebdb8",
+      "blockHash": "0xd02db4acf9a3cd0e596cc78e1a74bb8df1fd49c1c57525aa8659ff8fb6e3c4f0"
+    }
+  }
+}
