@@ -1,69 +1,572 @@
 {
   "source": {
-    "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-    "language": "ink! 5.0.0",
-    "compiler": "rustc 1.75.0"
+    "hash": "0x803525c58378300d02867eb00be328297e80cbaff7b01616742932b31b33a13b",
+    "language": "ink! 5.1.1",
+    "compiler": "rustc 1.90.0",
+    "build_info": {
+      "build_mode": "Release",
+      "cargo_contract_version": "5.0.3",
+      "rust_toolchain": "stable-x86_64-unknown-linux-gnu",
+      "wasm_opt_settings": {
+        "keep_debug_symbols": false,
+        "optimization_passes": "Z"
+      }
+    }
   },
   "contract": {
     "name": "simple_dao",
     "version": "0.1.0",
-    "authors": ["BelizeChain Team"]
+    "authors": [
+      "BelizeChain Core Team <dev@belizechain.org>"
+    ],
+    "license": "GPL-3.0-only"
   },
+  "image": null,
   "spec": {
     "constructors": [
       {
         "args": [
           {
-            "label": "governance_token",
+            "label": "voting_period",
             "type": {
-              "displayName": ["AccountId"],
-              "type": "AccountId"
+              "displayName": [
+                "u32"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "label": "quorum_bps",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "label": "total_voting_power",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "dalla_token",
+            "type": {
+              "displayName": [
+                "Option"
+              ],
+              "type": 11
+            }
+          },
+          {
+            "label": "timelock_blocks",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "label": "max_active_proposals",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "label": "min_proposal_threshold",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "execution_window",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 5
             }
           }
         ],
         "default": false,
-        "docs": ["Creates a new DAO"],
+        "docs": [
+          "Creates a new Simple DAO",
+          "",
+          "# Panics",
+          "- `voting_period < 10`",
+          "- `quorum_bps` not in `100..=10000`",
+          "- `total_voting_power == 0`",
+          "- `max_active_proposals == 0`"
+        ],
         "label": "new",
         "payable": false,
         "returnType": {
-          "displayName": ["ink_primitives", "ConstructorResult"],
-          "type": "Result"
+          "displayName": [
+            "ink_primitives",
+            "ConstructorResult"
+          ],
+          "type": 23
         },
         "selector": "0x9bae9d5e"
       }
     ],
-    "docs": ["Simple DAO governance contract"],
+    "docs": [
+      " # Simple DAO - Governance Contract",
+      "",
+      " A lightweight DAO (Decentralized Autonomous Organization) for BelizeChain.",
+      " Demonstrates cross-contract integration with DALLA token.",
+      "",
+      " ## Features",
+      " - Proposal creation with optional treasury transfer actions",
+      " - DALLA token-weighted voting",
+      " - Per-proposal total supply snapshot for quorum isolation",
+      " - Configurable voting periods with execution timelock",
+      " - Two-step admin transfer pattern",
+      " - Two-step code hash upgrade with timelock",
+      " - Proposal cancellation by proposer or admin",
+      " - Active proposal cap to prevent storage DoS",
+      "",
+      " ## Governance Security",
+      " - Voting locks: When a user votes, their DALLA tokens are locked via",
+      "   cross-contract call until the proposal's voting period ends. This prevents",
+      "   flash governance (C02) and double-voting via token transfer (H01).",
+      " - Proposal expiration: Passed proposals must be executed within the execution",
+      "   window after the timelock expires, or they auto-expire."
+    ],
     "environment": {
       "accountId": {
-        "displayName": ["AccountId"],
-        "type": "AccountId"
+        "displayName": [
+          "AccountId"
+        ],
+        "type": 0
       },
       "balance": {
-        "displayName": ["Balance"],
-        "type": "u128"
+        "displayName": [
+          "Balance"
+        ],
+        "type": 4
       },
       "blockNumber": {
-        "displayName": ["BlockNumber"],
-        "type": "u32"
+        "displayName": [
+          "BlockNumber"
+        ],
+        "type": 5
       },
       "chainExtension": {
-        "displayName": ["ChainExtension"],
-        "type": "NoChainExtension"
+        "displayName": [
+          "ChainExtension"
+        ],
+        "type": 40
       },
       "hash": {
-        "displayName": ["Hash"],
-        "type": "Hash"
+        "displayName": [
+          "Hash"
+        ],
+        "type": 20
       },
       "maxEventTopics": 4,
+      "staticBufferSize": 16384,
       "timestamp": {
-        "displayName": ["Timestamp"],
-        "type": "u64"
+        "displayName": [
+          "Timestamp"
+        ],
+        "type": 39
       }
     },
-    "events": [],
+    "events": [
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "id",
+            "type": {
+              "displayName": [
+                "ProposalId"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "proposer",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "description",
+            "type": {
+              "displayName": [
+                "String"
+              ],
+              "type": 3
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "end_block",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 5
+            }
+          }
+        ],
+        "docs": [
+          "Event emitted when a proposal is created"
+        ],
+        "label": "ProposalCreated",
+        "module_path": "simple_dao::simple_dao",
+        "signature_topic": "0x93b2a428a295722bffb0ac67a50c116f8e743f4778d66929e0f9a1b19508cf3f"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "proposal_id",
+            "type": {
+              "displayName": [
+                "ProposalId"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "voter",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "support",
+            "type": {
+              "displayName": [
+                "bool"
+              ],
+              "type": 6
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "weight",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "docs": [
+          "Event emitted when a vote is cast"
+        ],
+        "label": "VoteCast",
+        "module_path": "simple_dao::simple_dao",
+        "signature_topic": "0xaf5b6b332ee99dc475e2811e250d069329468e18277745a0a8e4f066983c489d"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "proposal_id",
+            "type": {
+              "displayName": [
+                "ProposalId"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "status",
+            "type": {
+              "displayName": [
+                "ProposalStatus"
+              ],
+              "type": 9
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "yes_votes",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "no_votes",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "docs": [
+          "Event emitted when a proposal is finalized"
+        ],
+        "label": "ProposalFinalized",
+        "module_path": "simple_dao::simple_dao",
+        "signature_topic": "0xf3387c3729c6b4edcfb0601da57dd8416ba9cffeb959acbbb7eaee591edf782a"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "proposal_id",
+            "type": {
+              "displayName": [
+                "ProposalId"
+              ],
+              "type": 5
+            }
+          }
+        ],
+        "docs": [
+          "Event emitted when a proposal is executed"
+        ],
+        "label": "ProposalExecuted",
+        "module_path": "simple_dao::simple_dao",
+        "signature_topic": "0xddfe7f295d992235f6a7383cea3c5a7721049996fad19b261039a5fd67ed5189"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "proposal_id",
+            "type": {
+              "displayName": [
+                "ProposalId"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "cancelled_by",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "docs": [
+          "Event emitted when a proposal is cancelled"
+        ],
+        "label": "ProposalCancelled",
+        "module_path": "simple_dao::simple_dao",
+        "signature_topic": "0x3c30d227a759029f398cf6cab3ddc15534018515cd2aeea86761f30fae4b6866"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "current_admin",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "proposed_admin",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "docs": [
+          "Event emitted when an admin transfer is proposed"
+        ],
+        "label": "AdminTransferProposed",
+        "module_path": "simple_dao::simple_dao",
+        "signature_topic": "0x80748a15d5c656efc8a6c1d5a43694b366be1d52a2ff4c5d57fd0e6396a6715c"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "old_admin",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "new_admin",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "docs": [
+          "Event emitted when an admin transfer is completed"
+        ],
+        "label": "AdminTransferred",
+        "module_path": "simple_dao::simple_dao",
+        "signature_topic": "0x1e7dec719acdc63b567daf72e5bc9a68143fb9165290f1a6f0d2bdc1bd749960"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "proposed_by",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "new_code_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 20
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "earliest_execution_block",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 5
+            }
+          }
+        ],
+        "docs": [
+          "Event emitted when a code hash upgrade is proposed"
+        ],
+        "label": "CodeHashUpgradeProposed",
+        "module_path": "simple_dao::simple_dao",
+        "signature_topic": "0xcd2b225515bbe02067efb887c4f6556d3d7cbced7c24b6523a7775e077ebb6e2"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "new_code_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 20
+            }
+          }
+        ],
+        "docs": [
+          "Event emitted when a code hash upgrade is executed"
+        ],
+        "label": "CodeHashUpdated",
+        "module_path": "simple_dao::simple_dao",
+        "signature_topic": "0xaffd951c1122aca5b07a1dd81dd76f523516dde814c2a690aa8bae552dfe358c"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "old_value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "new_value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "docs": [
+          "Event emitted when total voting power is updated"
+        ],
+        "label": "TotalVotingPowerUpdated",
+        "module_path": "simple_dao::simple_dao",
+        "signature_topic": "0x5e597054fe0c382e3667dd89d55953421f12c441ec7236033829d0baf409d768"
+      }
+    ],
     "lang_error": {
-      "displayName": ["ink", "LangError"],
-      "type": "LangError"
+      "displayName": [
+        "ink",
+        "LangError"
+      ],
+      "type": 24
     },
     "messages": [
       {
@@ -71,49 +574,631 @@
           {
             "label": "description",
             "type": {
-              "displayName": ["String"],
-              "type": "String"
+              "displayName": [
+                "String"
+              ],
+              "type": 3
+            }
+          },
+          {
+            "label": "transfer_target",
+            "type": {
+              "displayName": [
+                "Option"
+              ],
+              "type": 11
+            }
+          },
+          {
+            "label": "transfer_value",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 4
             }
           }
         ],
         "default": false,
-        "docs": ["Creates a new proposal"],
+        "docs": [
+          " Creates a new proposal",
+          "",
+          " Requires the caller to be the admin or hold DALLA tokens above",
+          " `min_proposal_threshold`. Optionally includes a treasury transfer",
+          " that will be executed if the proposal passes."
+        ],
         "label": "create_proposal",
         "mutates": true,
         "payable": false,
         "returnType": {
-          "displayName": ["u32"],
-          "type": "u32"
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 25
         },
-        "selector": "0xf2e2f2f2"
+        "selector": "0xf9fb13d3"
       },
       {
         "args": [
           {
             "label": "proposal_id",
             "type": {
-              "displayName": ["u32"],
-              "type": "u32"
+              "displayName": [
+                "ProposalId"
+              ],
+              "type": 5
             }
           },
           {
             "label": "support",
             "type": {
-              "displayName": ["bool"],
-              "type": "bool"
+              "displayName": [
+                "bool"
+              ],
+              "type": 6
             }
           }
         ],
         "default": false,
-        "docs": ["Votes on a proposal"],
+        "docs": [
+          " Casts a vote on a proposal",
+          "",
+          " Vote weight is determined by the caller's DALLA token balance",
+          " via cross-contract call — callers cannot self-report weight."
+        ],
         "label": "vote",
         "mutates": true,
         "payable": false,
         "returnType": {
-          "displayName": ["Result"],
-          "type": "Result"
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 28
         },
-        "selector": "0x0121b5f8"
+        "selector": "0x083be260"
+      },
+      {
+        "args": [
+          {
+            "label": "proposal_id",
+            "type": {
+              "displayName": [
+                "ProposalId"
+              ],
+              "type": 5
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Finalizes a proposal after voting period ends",
+          "",
+          " Uses the per-proposal `total_supply_snapshot` for quorum calculation,",
+          " ensuring that admin changes to `total_voting_power` after proposal",
+          " creation do not affect existing proposals."
+        ],
+        "label": "finalize_proposal",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 28
+        },
+        "selector": "0x745e9f7a"
+      },
+      {
+        "args": [
+          {
+            "label": "proposal_id",
+            "type": {
+              "displayName": [
+                "ProposalId"
+              ],
+              "type": 5
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Executes a passed proposal after the timelock period",
+          "",
+          " If the proposal includes a transfer target and value, the transfer",
+          " is dispatched after state is updated (CEI pattern)."
+        ],
+        "label": "execute_proposal",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 28
+        },
+        "selector": "0xde5bbbbc"
+      },
+      {
+        "args": [
+          {
+            "label": "proposal_id",
+            "type": {
+              "displayName": [
+                "ProposalId"
+              ],
+              "type": 5
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Cancels an active proposal",
+          "",
+          " Only the original proposer or the admin can cancel a proposal.",
+          " Cancelled proposals cannot be finalized or executed."
+        ],
+        "label": "cancel_proposal",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 28
+        },
+        "selector": "0xe204dd12"
+      },
+      {
+        "args": [
+          {
+            "label": "proposal_id",
+            "type": {
+              "displayName": [
+                "ProposalId"
+              ],
+              "type": 5
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Gets a proposal by ID"
+        ],
+        "label": "get_proposal",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 30
+        },
+        "selector": "0xba4dc5ec"
+      },
+      {
+        "args": [
+          {
+            "label": "proposal_id",
+            "type": {
+              "displayName": [
+                "ProposalId"
+              ],
+              "type": 5
+            }
+          },
+          {
+            "label": "voter",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Gets the vote weight for an account on a proposal"
+        ],
+        "label": "get_vote",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 32
+        },
+        "selector": "0x3dfc2d3b"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the current proposal count"
+        ],
+        "label": "proposal_count",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 34
+        },
+        "selector": "0x38fddd01"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the voting period"
+        ],
+        "label": "voting_period",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 34
+        },
+        "selector": "0x52242563"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the quorum threshold"
+        ],
+        "label": "quorum_threshold",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 34
+        },
+        "selector": "0xabee6657"
+      },
+      {
+        "args": [
+          {
+            "label": "power",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Sets the total voting power (admin only)",
+          "",
+          " Changes only affect future proposals — existing proposals retain",
+          " their creation-time snapshot."
+        ],
+        "label": "set_total_voting_power",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 28
+        },
+        "selector": "0xd9e7d4a3"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the total voting power"
+        ],
+        "label": "total_voting_power",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 35
+        },
+        "selector": "0x9da928f8"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the DALLA token address"
+        ],
+        "label": "dalla_token_address",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 36
+        },
+        "selector": "0xaba8e062"
+      },
+      {
+        "args": [
+          {
+            "label": "new_admin",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Proposes an admin transfer (two-step pattern)",
+          "",
+          " The new admin must call `accept_admin()` to complete the transfer."
+        ],
+        "label": "transfer_admin",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 28
+        },
+        "selector": "0xd26c8e14"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Accepts a pending admin transfer",
+          "",
+          " Must be called by the account set as `pending_admin`."
+        ],
+        "label": "accept_admin",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 28
+        },
+        "selector": "0x3830821d"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the admin address"
+        ],
+        "label": "admin",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 37
+        },
+        "selector": "0x1aa66b39"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the pending admin address"
+        ],
+        "label": "pending_admin",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 36
+        },
+        "selector": "0xb2bcf854"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the timelock duration in blocks"
+        ],
+        "label": "timelock_blocks",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 34
+        },
+        "selector": "0x8613420e"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the current active proposal count"
+        ],
+        "label": "active_proposal_count",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 34
+        },
+        "selector": "0x52183ffd"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the maximum active proposals allowed"
+        ],
+        "label": "max_active_proposals",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 34
+        },
+        "selector": "0xefe48e60"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the minimum proposal threshold"
+        ],
+        "label": "min_proposal_threshold",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 35
+        },
+        "selector": "0x7d9e5007"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the execution window in blocks"
+        ],
+        "label": "execution_window",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 34
+        },
+        "selector": "0x788b7906"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Gets the currently proposed code hash (if any)"
+        ],
+        "label": "proposed_code_hash",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 38
+        },
+        "selector": "0x29274e89"
+      },
+      {
+        "args": [
+          {
+            "label": "new_code_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 20
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Proposes a code hash upgrade (admin only, requires timelock)",
+          "",
+          " The upgrade cannot be executed until `timelock_blocks` have passed.",
+          " This gives the community time to observe and react."
+        ],
+        "label": "propose_code_hash_upgrade",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 28
+        },
+        "selector": "0xc26e97fd"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Executes a previously proposed code hash upgrade after timelock"
+        ],
+        "label": "execute_code_hash_upgrade",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 28
+        },
+        "selector": "0x67c9effd"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Cancels a pending code hash upgrade"
+        ],
+        "label": "cancel_code_hash_upgrade",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 28
+        },
+        "selector": "0xd8c32359"
       }
     ]
   },
@@ -121,12 +1206,1719 @@
     "root": {
       "layout": {
         "struct": {
-          "fields": [],
+          "fields": [
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x104d8b87",
+                              "ty": 0
+                            }
+                          },
+                          "name": "proposer"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x104d8b87",
+                              "ty": 3
+                            }
+                          },
+                          "name": "description"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x104d8b87",
+                              "ty": 4
+                            }
+                          },
+                          "name": "yes_votes"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x104d8b87",
+                              "ty": 4
+                            }
+                          },
+                          "name": "no_votes"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x104d8b87",
+                              "ty": 5
+                            }
+                          },
+                          "name": "start_block"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x104d8b87",
+                              "ty": 5
+                            }
+                          },
+                          "name": "end_block"
+                        },
+                        {
+                          "layout": {
+                            "enum": {
+                              "dispatchKey": "0x104d8b87",
+                              "name": "ProposalStatus",
+                              "variants": {
+                                "0": {
+                                  "fields": [],
+                                  "name": "Active"
+                                },
+                                "1": {
+                                  "fields": [],
+                                  "name": "Passed"
+                                },
+                                "2": {
+                                  "fields": [],
+                                  "name": "Rejected"
+                                },
+                                "3": {
+                                  "fields": [],
+                                  "name": "Executed"
+                                },
+                                "4": {
+                                  "fields": [],
+                                  "name": "Cancelled"
+                                },
+                                "5": {
+                                  "fields": [],
+                                  "name": "Expired"
+                                }
+                              }
+                            }
+                          },
+                          "name": "status"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x104d8b87",
+                              "ty": 6
+                            }
+                          },
+                          "name": "executed"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x104d8b87",
+                              "ty": 4
+                            }
+                          },
+                          "name": "total_supply_snapshot"
+                        },
+                        {
+                          "layout": {
+                            "enum": {
+                              "dispatchKey": "0x104d8b87",
+                              "name": "Option",
+                              "variants": {
+                                "0": {
+                                  "fields": [],
+                                  "name": "None"
+                                },
+                                "1": {
+                                  "fields": [
+                                    {
+                                      "layout": {
+                                        "leaf": {
+                                          "key": "0x104d8b87",
+                                          "ty": 5
+                                        }
+                                      },
+                                      "name": "0"
+                                    }
+                                  ],
+                                  "name": "Some"
+                                }
+                              }
+                            }
+                          },
+                          "name": "finalized_block"
+                        },
+                        {
+                          "layout": {
+                            "enum": {
+                              "dispatchKey": "0x104d8b87",
+                              "name": "Option",
+                              "variants": {
+                                "0": {
+                                  "fields": [],
+                                  "name": "None"
+                                },
+                                "1": {
+                                  "fields": [
+                                    {
+                                      "layout": {
+                                        "leaf": {
+                                          "key": "0x104d8b87",
+                                          "ty": 0
+                                        }
+                                      },
+                                      "name": "0"
+                                    }
+                                  ],
+                                  "name": "Some"
+                                }
+                              }
+                            }
+                          },
+                          "name": "transfer_target"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x104d8b87",
+                              "ty": 4
+                            }
+                          },
+                          "name": "transfer_value"
+                        }
+                      ],
+                      "name": "Proposal"
+                    }
+                  },
+                  "root_key": "0x104d8b87",
+                  "ty": 7
+                }
+              },
+              "name": "proposals"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0x9c0a7feb",
+                      "ty": 4
+                    }
+                  },
+                  "root_key": "0x9c0a7feb",
+                  "ty": 16
+                }
+              },
+              "name": "votes"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "next_proposal_id"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "voting_period"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "quorum_bps"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "total_voting_power"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "admin"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "Option",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "None"
+                    },
+                    "1": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x00000000",
+                              "ty": 0
+                            }
+                          },
+                          "name": "0"
+                        }
+                      ],
+                      "name": "Some"
+                    }
+                  }
+                }
+              },
+              "name": "pending_admin"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "Option",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "None"
+                    },
+                    "1": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x00000000",
+                              "ty": 0
+                            }
+                          },
+                          "name": "0"
+                        }
+                      ],
+                      "name": "Some"
+                    }
+                  }
+                }
+              },
+              "name": "dalla_token"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "timelock_blocks"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "max_active_proposals"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "active_proposal_count"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "min_proposal_threshold"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "Option",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "None"
+                    },
+                    "1": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x00000000",
+                              "ty": 20
+                            }
+                          },
+                          "name": "0"
+                        }
+                      ],
+                      "name": "Some"
+                    }
+                  }
+                }
+              },
+              "name": "proposed_code_hash"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "proposed_code_hash_block"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "execution_window"
+            }
+          ],
           "name": "SimpleDao"
         }
       },
-      "root_key": "0x00000000"
+      "root_key": "0x00000000",
+      "ty": 21
     }
   },
-  "types": []
+  "types": [
+    {
+      "id": 0,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 1,
+                "typeName": "[u8; 32]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "types",
+          "AccountId"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "type": {
+        "def": {
+          "array": {
+            "len": 32,
+            "type": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": {
+        "def": {
+          "primitive": "u8"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": {
+        "def": {
+          "primitive": "str"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": {
+        "def": {
+          "primitive": "u128"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": {
+        "def": {
+          "primitive": "u32"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": {
+        "def": {
+          "primitive": "bool"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "K",
+            "type": 5
+          },
+          {
+            "name": "V",
+            "type": 8
+          },
+          {
+            "name": "KeyType",
+            "type": 12
+          }
+        ],
+        "path": [
+          "ink_storage",
+          "lazy",
+          "mapping",
+          "Mapping"
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "proposer",
+                "type": 0,
+                "typeName": "AccountId"
+              },
+              {
+                "name": "description",
+                "type": 3,
+                "typeName": "String"
+              },
+              {
+                "name": "yes_votes",
+                "type": 4,
+                "typeName": "u128"
+              },
+              {
+                "name": "no_votes",
+                "type": 4,
+                "typeName": "u128"
+              },
+              {
+                "name": "start_block",
+                "type": 5,
+                "typeName": "u32"
+              },
+              {
+                "name": "end_block",
+                "type": 5,
+                "typeName": "u32"
+              },
+              {
+                "name": "status",
+                "type": 9,
+                "typeName": "ProposalStatus"
+              },
+              {
+                "name": "executed",
+                "type": 6,
+                "typeName": "bool"
+              },
+              {
+                "name": "total_supply_snapshot",
+                "type": 4,
+                "typeName": "u128"
+              },
+              {
+                "name": "finalized_block",
+                "type": 10,
+                "typeName": "Option<u32>"
+              },
+              {
+                "name": "transfer_target",
+                "type": 11,
+                "typeName": "Option<AccountId>"
+              },
+              {
+                "name": "transfer_value",
+                "type": 4,
+                "typeName": "Balance"
+              }
+            ]
+          }
+        },
+        "path": [
+          "simple_dao",
+          "simple_dao",
+          "Proposal"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Active"
+              },
+              {
+                "index": 1,
+                "name": "Passed"
+              },
+              {
+                "index": 2,
+                "name": "Rejected"
+              },
+              {
+                "index": 3,
+                "name": "Executed"
+              },
+              {
+                "index": 4,
+                "name": "Cancelled"
+              },
+              {
+                "index": 5,
+                "name": "Expired"
+              }
+            ]
+          }
+        },
+        "path": [
+          "simple_dao",
+          "simple_dao",
+          "ProposalStatus"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 5
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 5
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 0
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 0
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "L",
+            "type": 13
+          },
+          {
+            "name": "R",
+            "type": 14
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ResolverKey"
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "AutoKey"
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "ParentKey",
+            "type": 15
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ManualKey"
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "type": {
+        "def": {
+          "tuple": []
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "K",
+            "type": 17
+          },
+          {
+            "name": "V",
+            "type": 4
+          },
+          {
+            "name": "KeyType",
+            "type": 18
+          }
+        ],
+        "path": [
+          "ink_storage",
+          "lazy",
+          "mapping",
+          "Mapping"
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "type": {
+        "def": {
+          "tuple": [
+            5,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "L",
+            "type": 13
+          },
+          {
+            "name": "R",
+            "type": 19
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ResolverKey"
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "type": {
+        "def": {
+          "composite": {}
+        },
+        "params": [
+          {
+            "name": "ParentKey",
+            "type": 15
+          }
+        ],
+        "path": [
+          "ink_storage_traits",
+          "impls",
+          "ManualKey"
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 1,
+                "typeName": "[u8; 32]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "types",
+          "Hash"
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "proposals",
+                "type": 7,
+                "typeName": "<Mapping<ProposalId, Proposal> as::ink::storage::traits::\nAutoStorableHint<::ink::storage::traits::ManualKey<2274053392u32,\n()>,>>::Type"
+              },
+              {
+                "name": "votes",
+                "type": 16,
+                "typeName": "<Mapping<(ProposalId, AccountId), u128> as::ink::storage::traits::\nAutoStorableHint<::ink::storage::traits::ManualKey<3950971548u32,\n()>,>>::Type"
+              },
+              {
+                "name": "next_proposal_id",
+                "type": 5,
+                "typeName": "<ProposalId as::ink::storage::traits::AutoStorableHint<::ink::\nstorage::traits::ManualKey<1740644111u32, ()>,>>::Type"
+              },
+              {
+                "name": "voting_period",
+                "type": 5,
+                "typeName": "<u32 as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<1822863255u32, ()>,>>::Type"
+              },
+              {
+                "name": "quorum_bps",
+                "type": 5,
+                "typeName": "<u32 as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<2721113376u32, ()>,>>::Type"
+              },
+              {
+                "name": "total_voting_power",
+                "type": 4,
+                "typeName": "<u128 as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<3498360733u32, ()>,>>::Type"
+              },
+              {
+                "name": "admin",
+                "type": 0,
+                "typeName": "<AccountId as::ink::storage::traits::AutoStorableHint<::ink::\nstorage::traits::ManualKey<3322249381u32, ()>,>>::Type"
+              },
+              {
+                "name": "pending_admin",
+                "type": 11,
+                "typeName": "<Option<AccountId> as::ink::storage::traits::AutoStorableHint<::\nink::storage::traits::ManualKey<2006069484u32, ()>,>>::Type"
+              },
+              {
+                "name": "dalla_token",
+                "type": 11,
+                "typeName": "<Option<AccountId> as::ink::storage::traits::AutoStorableHint<::\nink::storage::traits::ManualKey<4290301294u32, ()>,>>::Type"
+              },
+              {
+                "name": "timelock_blocks",
+                "type": 5,
+                "typeName": "<u32 as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<2246838613u32, ()>,>>::Type"
+              },
+              {
+                "name": "max_active_proposals",
+                "type": 5,
+                "typeName": "<u32 as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<3387419189u32, ()>,>>::Type"
+              },
+              {
+                "name": "active_proposal_count",
+                "type": 5,
+                "typeName": "<u32 as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<899523776u32, ()>,>>::Type"
+              },
+              {
+                "name": "min_proposal_threshold",
+                "type": 4,
+                "typeName": "<u128 as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<2421107117u32, ()>,>>::Type"
+              },
+              {
+                "name": "proposed_code_hash",
+                "type": 22,
+                "typeName": "<Option<Hash> as::ink::storage::traits::AutoStorableHint<::ink\n::storage::traits::ManualKey<2252601120u32, ()>,>>::Type"
+              },
+              {
+                "name": "proposed_code_hash_block",
+                "type": 5,
+                "typeName": "<u32 as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<227417544u32, ()>,>>::Type"
+              },
+              {
+                "name": "execution_window",
+                "type": 5,
+                "typeName": "<u32 as::ink::storage::traits::AutoStorableHint<::ink::storage\n::traits::ManualKey<4194026513u32, ()>,>>::Type"
+              }
+            ]
+          }
+        },
+        "path": [
+          "simple_dao",
+          "simple_dao",
+          "SimpleDao"
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 20
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 20
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 23,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 15
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 24
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 15
+          },
+          {
+            "name": "E",
+            "type": 24
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 1,
+                "name": "CouldNotReadInput"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "LangError"
+        ]
+      }
+    },
+    {
+      "id": 25,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 26
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 24
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 26
+          },
+          {
+            "name": "E",
+            "type": 24
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 26,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 5
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 27
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 5
+          },
+          {
+            "name": "E",
+            "type": 27
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 27,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "ProposalNotFound"
+              },
+              {
+                "index": 1,
+                "name": "VotingEnded"
+              },
+              {
+                "index": 2,
+                "name": "VotingActive"
+              },
+              {
+                "index": 3,
+                "name": "AlreadyVoted"
+              },
+              {
+                "index": 4,
+                "name": "AlreadyExecuted"
+              },
+              {
+                "index": 5,
+                "name": "ProposalNotPassed"
+              },
+              {
+                "index": 6,
+                "name": "NotAdmin"
+              },
+              {
+                "index": 7,
+                "name": "InvalidVotingPeriod"
+              },
+              {
+                "index": 8,
+                "name": "ZeroAddress"
+              },
+              {
+                "index": 9,
+                "name": "DallaTokenNotConfigured"
+              },
+              {
+                "index": 10,
+                "name": "BalanceQueryFailed"
+              },
+              {
+                "index": 11,
+                "name": "InsufficientVotingPower"
+              },
+              {
+                "index": 12,
+                "name": "DescriptionTooLong"
+              },
+              {
+                "index": 13,
+                "name": "NotActive"
+              },
+              {
+                "index": 14,
+                "name": "Overflow"
+              },
+              {
+                "index": 15,
+                "name": "ProposalCapReached"
+              },
+              {
+                "index": 16,
+                "name": "ZeroTotalSupply"
+              },
+              {
+                "index": 17,
+                "name": "TimelockNotExpired"
+              },
+              {
+                "index": 18,
+                "name": "NoPendingAdmin"
+              },
+              {
+                "index": 19,
+                "name": "NotPendingAdmin"
+              },
+              {
+                "index": 20,
+                "name": "InvalidQuorumBps"
+              },
+              {
+                "index": 21,
+                "name": "NotProposerOrAdmin"
+              },
+              {
+                "index": 22,
+                "name": "CodeHashUpdateFailed"
+              },
+              {
+                "index": 23,
+                "name": "ExecutionFailed"
+              },
+              {
+                "index": 24,
+                "name": "BelowProposalThreshold"
+              },
+              {
+                "index": 25,
+                "name": "NoUpgradeProposed"
+              },
+              {
+                "index": 26,
+                "name": "ExecutionWindowExpired"
+              },
+              {
+                "index": 27,
+                "name": "VotingLockFailed"
+              }
+            ]
+          }
+        },
+        "path": [
+          "simple_dao",
+          "simple_dao",
+          "Error"
+        ]
+      }
+    },
+    {
+      "id": 28,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 29
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 24
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 29
+          },
+          {
+            "name": "E",
+            "type": 24
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 15
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 27
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 15
+          },
+          {
+            "name": "E",
+            "type": 27
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 30,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 31
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 24
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 31
+          },
+          {
+            "name": "E",
+            "type": 24
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 31,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 8
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 8
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 33
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 24
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 33
+          },
+          {
+            "name": "E",
+            "type": 24
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 33,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 4
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 4
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 34,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 5
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 24
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 5
+          },
+          {
+            "name": "E",
+            "type": 24
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 35,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 4
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 24
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 4
+          },
+          {
+            "name": "E",
+            "type": 24
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 36,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 11
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 24
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 11
+          },
+          {
+            "name": "E",
+            "type": 24
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 37,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 0
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 24
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 0
+          },
+          {
+            "name": "E",
+            "type": 24
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 38,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 24
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 22
+          },
+          {
+            "name": "E",
+            "type": 24
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 39,
+      "type": {
+        "def": {
+          "primitive": "u64"
+        }
+      }
+    },
+    {
+      "id": 40,
+      "type": {
+        "def": {
+          "variant": {}
+        },
+        "path": [
+          "ink_env",
+          "types",
+          "NoChainExtension"
+        ]
+      }
+    }
+  ],
+  "version": 5
 }

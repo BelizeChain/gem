@@ -58,7 +58,37 @@ const CONTRACTS = {
     constructor: 'new',
     args: ['100000000000000', 100], // 100 DALLA per claim (100 * 10^12), 100 blocks (~10 min) cooldown
     value: '10000000000000000' // 10K DALLA to fund faucet (payable constructor)
+  },
+  psp37: {
+    name: 'PSP37 Multi-Token',
+    localPath: 'psp37_multi_token/target/ink/psp37_multi_token.contract',
+    dockerPath: 'psp37_multi_token/psp37_multi_token.contract',
+    constructor: 'new',
+    args: []
+  },
+  dex_factory: {
+    name: 'BelizeX Factory',
+    localPath: 'dex/target/ink/belizex_factory/belizex_factory.contract',
+    dockerPath: 'dex/belizex_factory.contract',
+    constructor: 'new',
+    // [admin, fee_to_setter, pair_code_hash] — pair_code_hash filled in at deploy time
+    args: [null, null, null]
+  },
+  dex_router: {
+    name: 'BelizeX Router',
+    localPath: 'dex/target/ink/belizex_router/belizex_router.contract',
+    dockerPath: 'dex/belizex_router.contract',
+    constructor: 'new',
+    // [factory, wbzc] — factory filled at deploy time; wbzc defaults to DALLA address until WBZC exists
+    args: [null, null]
   }
+};
+
+// Pair contract is uploaded as code only (instantiated by Factory.create_pair, not by us)
+const PAIR_CODE = {
+  name: 'BelizeX Pair (code upload only)',
+  localPath: 'dex/target/ink/belizex_pair/belizex_pair.contract',
+  dockerPath: 'dex/belizex_pair.contract'
 };
 
 // Network configurations
@@ -172,6 +202,24 @@ class Deployer {
         // Set DALLA token address (4th param — index 3)
         args[3] = this.deployedAddresses.dalla;
       }
+      if (contractKey === 'dex_factory') {
+        // [admin, fee_to_setter, pair_code_hash]
+        args[0] = this.signer.address;
+        args[1] = this.signer.address;
+        if (!this.deployedAddresses.dex_pair_code_hash) {
+          throw new Error('dex_factory requires dex_pair code upload first');
+        }
+        args[2] = this.deployedAddresses.dex_pair_code_hash;
+      }
+      if (contractKey === 'dex_router') {
+        // [factory, wbzc] — wbzc defaults to DALLA until a real WBZC contract exists
+        if (!this.deployedAddresses.dex_factory) {
+          throw new Error('dex_router requires dex_factory deployed first');
+        }
+        args[0] = this.deployedAddresses.dex_factory;
+        const dallaFallback = this.deployedAddresses.dalla || process.env.DALLA_CONTRACT_ADDRESS;
+        args[1] = dallaFallback || this.signer.address;
+      }
 
       // Use generous gas limits (dryRun requires --rpc-methods=unsafe on node)
       const gasLimit = this.api.registry.createType('WeightV2', {
@@ -263,11 +311,86 @@ class Deployer {
     }
   }
 
+  async uploadPairCode() {
+    console.log(`\n📤 Uploading ${PAIR_CODE.name}...`);
+    const isDocker = fs.existsSync('/app/artifacts');
+    const relativePath = isDocker ? PAIR_CODE.dockerPath : PAIR_CODE.localPath;
+    const contractPath = path.join(ARTIFACTS_DIR, relativePath);
+    if (!fs.existsSync(contractPath)) {
+      console.error(`❌ Pair contract artifact not found: ${contractPath}`);
+      return null;
+    }
+    const contractData = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
+    const wasm = contractData.source?.wasm;
+    if (!wasm) {
+      console.error('❌ WASM not found in pair contract file');
+      return null;
+    }
+    // pallet-contracts uploadCode(code, storageDepositLimit, determinism)
+    return new Promise((resolve, reject) => {
+      let resolved = false;
+      const tx = this.api.tx.contracts.uploadCode(wasm, null, 'Enforced');
+      tx.signAndSend(this.signer, async ({ status, events, dispatchError }) => {
+        if (resolved) return;
+        if (dispatchError) {
+          if (dispatchError.isModule) {
+            const decoded = this.api.registry.findMetaError(dispatchError.asModule);
+            const { docs, name, section } = decoded;
+            console.error(`❌ Error: ${section}.${name}: ${docs.join(' ')}`);
+          } else {
+            console.error(`❌ Error: ${dispatchError.toString()}`);
+          }
+          resolved = true;
+          reject(new Error('Pair code upload failed'));
+          return;
+        }
+        if (status.isInBlock) {
+          let codeHash = null;
+          for (const { event } of events) {
+            if (event.section === 'contracts' && event.method === 'CodeStored') {
+              codeHash = event.data[0]?.toHex();
+              break;
+            }
+          }
+          if (codeHash) {
+            console.log(`   ✅ Pair code uploaded: ${codeHash}`);
+            this.deployedAddresses.dex_pair_code_hash = codeHash;
+            resolved = true;
+            resolve({ codeHash });
+          } else {
+            // Code may already exist on-chain — derive hash from artifact metadata as fallback
+            const fallback = contractData.source?.hash;
+            if (fallback) {
+              console.log(`   ⚠️  CodeStored event not found; using artifact hash: ${fallback}`);
+              this.deployedAddresses.dex_pair_code_hash = fallback;
+              resolved = true;
+              resolve({ codeHash: fallback });
+            } else {
+              resolved = true;
+              reject(new Error('Pair code upload succeeded but code hash not found'));
+            }
+          }
+        }
+      }).catch(reject);
+    });
+  }
+
+  async deployDex() {
+    const results = {};
+    const pairResult = await this.uploadPairCode();
+    if (pairResult) results.dex_pair_code = pairResult;
+    const factoryResult = await this.deployContract('dex_factory');
+    if (factoryResult) results.dex_factory = factoryResult;
+    const routerResult = await this.deployContract('dex_router');
+    if (routerResult) results.dex_router = routerResult;
+    return results;
+  }
+
   async deployAll() {
     const results = {};
 
     // Deploy in order (some contracts depend on others)
-    const deployOrder = ['dalla', 'belinft', 'dao', 'faucet'];
+    const deployOrder = ['dalla', 'belinft', 'dao', 'faucet', 'psp37'];
 
     for (const contractKey of deployOrder) {
       const result = await this.deployContract(contractKey);
@@ -277,6 +400,10 @@ class Deployer {
         console.warn(`⚠️  Skipping ${contractKey} deployment`);
       }
     }
+
+    // DEX requires pair-code upload + factory + router, in that order
+    const dexResults = await this.deployDex();
+    Object.assign(results, dexResults);
 
     return results;
   }
@@ -333,7 +460,7 @@ Usage:
   node scripts/deploy.js [options]
 
 Options:
-  --contract=<name>   Contract to deploy: dalla, belinft, dao, faucet, all (default: all)
+  --contract=<name>   Contract to deploy: dalla, belinft, dao, faucet, psp37, dex_factory, dex_router, dex (factory+pair+router), all (default: all)
   --network=<name>    Network: local, testnet, mainnet (default: local)
   --account=<uri>     Account URI (default: //Alice for local)
   --help, -h          Show this help
@@ -381,6 +508,8 @@ async function main() {
     let results;
     if (options.contract === 'all') {
       results = await deployer.deployAll();
+    } else if (options.contract === 'dex') {
+      results = await deployer.deployDex();
     } else {
       const result = await deployer.deployContract(options.contract);
       results = result ? { [options.contract]: result } : {};

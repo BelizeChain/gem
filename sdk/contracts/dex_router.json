@@ -1,0 +1,1743 @@
+{
+  "source": {
+    "hash": "0x33f7e283ec0d494ec82f26a7faca8d73abae7ea3b105c15094776818593ddd0b",
+    "language": "ink! 5.1.1",
+    "compiler": "rustc 1.90.0",
+    "build_info": {
+      "build_mode": "Release",
+      "cargo_contract_version": "5.0.3",
+      "rust_toolchain": "stable-x86_64-unknown-linux-gnu",
+      "wasm_opt_settings": {
+        "keep_debug_symbols": false,
+        "optimization_passes": "Z"
+      }
+    }
+  },
+  "contract": {
+    "name": "belizex_router",
+    "version": "1.0.0",
+    "authors": [
+      "BelizeChain Team <dev@belizechain.io>"
+    ],
+    "license": "GPL-3.0-only"
+  },
+  "image": null,
+  "spec": {
+    "constructors": [
+      {
+        "args": [
+          {
+            "label": "factory",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "wbzc",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          "Create a new router",
+          "",
+          "# Parameters",
+          "* `factory` - Factory contract address",
+          "* `wbzc` - Wrapped BZC token address"
+        ],
+        "label": "new",
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink_primitives",
+            "ConstructorResult"
+          ],
+          "type": 4
+        },
+        "selector": "0x9bae9d5e"
+      }
+    ],
+    "docs": [],
+    "environment": {
+      "accountId": {
+        "displayName": [
+          "AccountId"
+        ],
+        "type": 0
+      },
+      "balance": {
+        "displayName": [
+          "Balance"
+        ],
+        "type": 8
+      },
+      "blockNumber": {
+        "displayName": [
+          "BlockNumber"
+        ],
+        "type": 26
+      },
+      "chainExtension": {
+        "displayName": [
+          "ChainExtension"
+        ],
+        "type": 27
+      },
+      "hash": {
+        "displayName": [
+          "Hash"
+        ],
+        "type": 23
+      },
+      "maxEventTopics": 4,
+      "staticBufferSize": 16384,
+      "timestamp": {
+        "displayName": [
+          "Timestamp"
+        ],
+        "type": 16
+      }
+    },
+    "events": [
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "sender",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "path",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 12
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "amounts",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 15
+            }
+          }
+        ],
+        "docs": [],
+        "label": "SwapExecuted",
+        "module_path": "belizex_router::router",
+        "signature_topic": "0x309f77e5e466934f7a0f2657152a5d2a8cbe686f268f65102b7abd76481e4cc6"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "provider",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "token_a",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "token_b",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "amount_a",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "amount_b",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "liquidity",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          }
+        ],
+        "docs": [],
+        "label": "LiquidityAdded",
+        "module_path": "belizex_router::router",
+        "signature_topic": "0x2e3aadd7c96a622e33dcdb69327bc39a6860815c4425613f3f348febaea30a24"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "provider",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "token_a",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "token_b",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "amount_a",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "amount_b",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          }
+        ],
+        "docs": [],
+        "label": "LiquidityRemoved",
+        "module_path": "belizex_router::router",
+        "signature_topic": "0x36e61bae5e62bb3353f0018f95087121326ae3e75fe6571e8a17d294e8245508"
+      }
+    ],
+    "lang_error": {
+      "displayName": [
+        "ink",
+        "LangError"
+      ],
+      "type": 6
+    },
+    "messages": [
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Get factory address"
+        ],
+        "label": "factory",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 7
+        },
+        "selector": "0x7067ac20"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Get WBZC address"
+        ],
+        "label": "wbzc",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 7
+        },
+        "selector": "0x4e301315"
+      },
+      {
+        "args": [
+          {
+            "label": "amount_a",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "reserve_a",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "reserve_b",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Quote: How much token B needed for exact token A?",
+          "",
+          " Maintains current price ratio."
+        ],
+        "label": "quote",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 9
+        },
+        "selector": "0xff7b33a5"
+      },
+      {
+        "args": [
+          {
+            "label": "amount_in",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "reserve_in",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "reserve_out",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Calculate output amount for exact input"
+        ],
+        "label": "get_amount_out",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 9
+        },
+        "selector": "0xa8544916"
+      },
+      {
+        "args": [
+          {
+            "label": "amount_out",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "reserve_in",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "reserve_out",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Calculate input amount for exact output"
+        ],
+        "label": "get_amount_in",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 9
+        },
+        "selector": "0xf8695474"
+      },
+      {
+        "args": [
+          {
+            "label": "amount_in",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "path",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 12
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Calculate output amounts for multi-hop swap",
+          "",
+          " Example: path = [DALLA, BZC, USDT]",
+          " Returns: [100 DALLA in, 200 BZC mid, 50 USDT out]"
+        ],
+        "label": "get_amounts_out",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 13
+        },
+        "selector": "0x7e84cfe3"
+      },
+      {
+        "args": [
+          {
+            "label": "amount_out",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "path",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 12
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Calculate input amounts for multi-hop swap"
+        ],
+        "label": "get_amounts_in",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 13
+        },
+        "selector": "0xb12ee4a9"
+      },
+      {
+        "args": [
+          {
+            "label": "token_a",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "token_b",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "amount_a_desired",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "amount_b_desired",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "amount_a_min",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "amount_b_min",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "deadline",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 16
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Add liquidity to a pool",
+          "",
+          " # Parameters",
+          " * `token_a` - First token address",
+          " * `token_b` - Second token address",
+          " * `amount_a_desired` - Desired amount of token A",
+          " * `amount_b_desired` - Desired amount of token B",
+          " * `amount_a_min` - Minimum amount of token A (slippage protection)",
+          " * `amount_b_min` - Minimum amount of token B (slippage protection)",
+          " * `to` - LP token recipient",
+          " * `deadline` - Transaction must complete before this timestamp",
+          "",
+          " # Returns",
+          " (amount_a, amount_b, liquidity)"
+        ],
+        "label": "add_liquidity",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 17
+        },
+        "selector": "0x264cd04b"
+      },
+      {
+        "args": [
+          {
+            "label": "token_a",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "token_b",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "liquidity",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "amount_a_min",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "amount_b_min",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "deadline",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 16
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Remove liquidity from a pool",
+          "",
+          " # Parameters",
+          " * `token_a` - First token address",
+          " * `token_b` - Second token address",
+          " * `liquidity` - Amount of LP tokens to burn",
+          " * `amount_a_min` - Minimum amount of token A to receive",
+          " * `amount_b_min` - Minimum amount of token B to receive",
+          " * `to` - Token recipient",
+          " * `deadline` - Transaction must complete before this timestamp",
+          "",
+          " # Returns",
+          " (amount_a, amount_b)"
+        ],
+        "label": "remove_liquidity",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 20
+        },
+        "selector": "0xbdd16bfa"
+      },
+      {
+        "args": [
+          {
+            "label": "amount_in",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "amount_out_min",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "path",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 12
+            }
+          },
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "deadline",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 16
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Swap exact tokens for tokens",
+          "",
+          " # Example",
+          " Swap exactly 100 DALLA for at least 190 BZC",
+          "",
+          " # Parameters",
+          " * `amount_in` - Exact amount of input tokens",
+          " * `amount_out_min` - Minimum amount of output tokens (slippage protection)",
+          " * `path` - Token swap path [DALLA, BZC] or [DALLA, BZC, USDT]",
+          " * `to` - Output token recipient",
+          " * `deadline` - Transaction must complete before this timestamp"
+        ],
+        "label": "swap_exact_tokens_for_tokens",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 13
+        },
+        "selector": "0xa0ac73cf"
+      },
+      {
+        "args": [
+          {
+            "label": "amount_out",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "amount_in_max",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "path",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 12
+            }
+          },
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "deadline",
+            "type": {
+              "displayName": [
+                "u64"
+              ],
+              "type": 16
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Swap tokens for exact tokens",
+          "",
+          " # Example",
+          " Swap at most 105 DALLA for exactly 200 BZC",
+          "",
+          " # Parameters",
+          " * `amount_out` - Exact amount of output tokens desired",
+          " * `amount_in_max` - Maximum amount of input tokens (slippage protection)",
+          " * `path` - Token swap path",
+          " * `to` - Output token recipient",
+          " * `deadline` - Transaction must complete before this timestamp"
+        ],
+        "label": "swap_tokens_for_exact_tokens",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 13
+        },
+        "selector": "0xa92e52ce"
+      },
+      {
+        "args": [
+          {
+            "label": "new_code_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 23
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Upgrades the contract code hash (factory deployer only)",
+          "",
+          " Allows the router contract to be upgraded to a new implementation",
+          " while preserving storage state."
+        ],
+        "label": "set_code_hash",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 24
+        },
+        "selector": "0x9e5c5758"
+      }
+    ]
+  },
+  "storage": {
+    "root": {
+      "layout": {
+        "struct": {
+          "fields": [
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "factory"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "wbzc"
+            }
+          ],
+          "name": "Router"
+        }
+      },
+      "root_key": "0x00000000",
+      "ty": 3
+    }
+  },
+  "types": [
+    {
+      "id": 0,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 1,
+                "typeName": "[u8; 32]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "types",
+          "AccountId"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "type": {
+        "def": {
+          "array": {
+            "len": 32,
+            "type": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": {
+        "def": {
+          "primitive": "u8"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "factory",
+                "type": 0,
+                "typeName": "<AccountId as::ink::storage::traits::AutoStorableHint<::ink::\nstorage::traits::ManualKey<2606109813u32, ()>,>>::Type"
+              },
+              {
+                "name": "wbzc",
+                "type": 0,
+                "typeName": "<AccountId as::ink::storage::traits::AutoStorableHint<::ink::\nstorage::traits::ManualKey<3093928412u32, ()>,>>::Type"
+              }
+            ]
+          }
+        },
+        "path": [
+          "belizex_router",
+          "router",
+          "Router"
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 5
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 6
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 5
+          },
+          {
+            "name": "E",
+            "type": 6
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "type": {
+        "def": {
+          "tuple": []
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 1,
+                "name": "CouldNotReadInput"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "LangError"
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 0
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 6
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 0
+          },
+          {
+            "name": "E",
+            "type": 6
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": {
+        "def": {
+          "primitive": "u128"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 10
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 6
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 10
+          },
+          {
+            "name": "E",
+            "type": 6
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 8
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 11
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 8
+          },
+          {
+            "name": "E",
+            "type": 11
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Expired"
+              },
+              {
+                "index": 1,
+                "name": "InsufficientOutputAmount"
+              },
+              {
+                "index": 2,
+                "name": "InsufficientAAmount"
+              },
+              {
+                "index": 3,
+                "name": "InsufficientBAmount"
+              },
+              {
+                "index": 4,
+                "name": "ExcessiveInputAmount"
+              },
+              {
+                "index": 5,
+                "name": "InvalidPath"
+              },
+              {
+                "index": 6,
+                "name": "IdenticalAddresses"
+              },
+              {
+                "index": 7,
+                "name": "ZeroAddress"
+              },
+              {
+                "index": 8,
+                "name": "ZeroAmount"
+              },
+              {
+                "index": 9,
+                "name": "InsufficientLiquidity"
+              },
+              {
+                "index": 10,
+                "name": "PairNotFound"
+              },
+              {
+                "index": 11,
+                "name": "SwapFailed"
+              },
+              {
+                "index": 12,
+                "name": "CallFailed"
+              },
+              {
+                "index": 13,
+                "name": "ArithmeticError"
+              },
+              {
+                "index": 14,
+                "name": "NotAuthorized"
+              },
+              {
+                "index": 15,
+                "name": "PathTooLong"
+              },
+              {
+                "index": 16,
+                "name": "CircularPath"
+              }
+            ]
+          }
+        },
+        "path": [
+          "belizex_router",
+          "router",
+          "Error"
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 0
+          }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 14
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 6
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 14
+          },
+          {
+            "name": "E",
+            "type": 6
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 15
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 11
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 15
+          },
+          {
+            "name": "E",
+            "type": 11
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 8
+          }
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": {
+        "def": {
+          "primitive": "u64"
+        }
+      }
+    },
+    {
+      "id": 17,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 18
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 6
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 18
+          },
+          {
+            "name": "E",
+            "type": 6
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 19
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 11
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 19
+          },
+          {
+            "name": "E",
+            "type": 11
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "type": {
+        "def": {
+          "tuple": [
+            8,
+            8,
+            8
+          ]
+        }
+      }
+    },
+    {
+      "id": 20,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 21
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 6
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 21
+          },
+          {
+            "name": "E",
+            "type": 6
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 22
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 11
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 22
+          },
+          {
+            "name": "E",
+            "type": 11
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "type": {
+        "def": {
+          "tuple": [
+            8,
+            8
+          ]
+        }
+      }
+    },
+    {
+      "id": 23,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 1,
+                "typeName": "[u8; 32]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "types",
+          "Hash"
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 25
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 6
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 25
+          },
+          {
+            "name": "E",
+            "type": 6
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 25,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 5
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 11
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 5
+          },
+          {
+            "name": "E",
+            "type": 11
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 26,
+      "type": {
+        "def": {
+          "primitive": "u32"
+        }
+      }
+    },
+    {
+      "id": 27,
+      "type": {
+        "def": {
+          "variant": {}
+        },
+        "path": [
+          "ink_env",
+          "types",
+          "NoChainExtension"
+        ]
+      }
+    }
+  ],
+  "version": 5
+}
