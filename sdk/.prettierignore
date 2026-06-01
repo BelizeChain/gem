@@ -1,0 +1,4 @@
+# Generated ink! contract metadata (produced by `cargo contract build`).
+# These are build artifacts copied into the SDK and are regenerated on each
+# contract build, so they are excluded from source formatting checks.
+contracts/
