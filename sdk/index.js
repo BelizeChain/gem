@@ -123,6 +123,19 @@ class GemSDK {
     };
   }
 
+  /**
+   * Get default WeightV2 gas limit for contract queries
+   */
+  getDefaultGasLimit() {
+    if (!this.api) {
+      throw new Error('Not connected. Call connect() first.');
+    }
+    return this.api.registry.createType('WeightV2', {
+      refTime: 50000000000n,
+      proofSize: 5000000n,
+    });
+  }
+
   // ============================================
   // DALLA Token (PSP22) Helper Functions
   // ============================================
@@ -133,23 +146,25 @@ class GemSDK {
    * @param {KeyringPair} signer - Sender account
    * @param {string} to - Recipient address
    * @param {string|number} amount - Amount to transfer
+   * @param {Array|string} data - Optional data payload for PSP22 receiver
    * @returns {Promise<Object>} Transaction result
    */
-  async dallaTransfer(contractAddress, signer, to, amount) {
+  async dallaTransfer(contractAddress, signer, to, amount, data = []) {
     const contract = this.contracts.dalla || this.loadContract('dalla', contractAddress);
 
     const { gasRequired, result } = await contract.query.transfer(
       signer.address,
-      { gasLimit: -1 },
+      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null },
       to,
-      amount
+      amount,
+      data
     );
 
     if (result.isErr) {
       throw new Error(`Transfer query failed: ${result.asErr.toString()}`);
     }
 
-    const tx = await contract.tx.transfer({ gasLimit: gasRequired }, to, amount);
+    const tx = await contract.tx.transfer({ gasLimit: gasRequired }, to, amount, data);
 
     return new Promise((resolve, reject) => {
       tx.signAndSend(signer, (result) => {
@@ -176,13 +191,20 @@ class GemSDK {
   async dallaBalanceOf(contractAddress, account) {
     const contract = this.contracts.dalla || this.loadContract('dalla', contractAddress);
 
-    const { result, output } = await contract.query.balanceOf(account, { gasLimit: -1 }, account);
+    const { result, output } = await contract.query.balanceOf(
+      account,
+      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null },
+      account
+    );
 
     if (result.isErr) {
       throw new Error(`Balance query failed: ${result.asErr.toString()}`);
     }
 
-    return output.toString();
+    if (output && output.isOk) {
+      return output.asOk.toString();
+    }
+    return output ? output.toString() : '0';
   }
 
   /**
@@ -192,19 +214,20 @@ class GemSDK {
    */
   async dallaMetadata(contractAddress) {
     const contract = this.contracts.dalla || this.loadContract('dalla', contractAddress);
+    const gasLimit = this.getDefaultGasLimit();
 
     const [name, symbol, decimals, totalSupply] = await Promise.all([
-      contract.query.tokenName(contract.address, { gasLimit: -1 }),
-      contract.query.tokenSymbol(contract.address, { gasLimit: -1 }),
-      contract.query.tokenDecimals(contract.address, { gasLimit: -1 }),
-      contract.query.totalSupply(contract.address, { gasLimit: -1 }),
+      contract.query.tokenName(contract.address, { gasLimit, storageDepositLimit: null }),
+      contract.query.tokenSymbol(contract.address, { gasLimit, storageDepositLimit: null }),
+      contract.query.tokenDecimals(contract.address, { gasLimit, storageDepositLimit: null }),
+      contract.query.totalSupply(contract.address, { gasLimit, storageDepositLimit: null }),
     ]);
 
     return {
-      name: name.output.toString(),
-      symbol: symbol.output.toString(),
-      decimals: decimals.output.toNumber(),
-      totalSupply: totalSupply.output.toString(),
+      name: name.output ? (name.output.isOk ? name.output.asOk.toHuman() : name.output.toHuman()) : null,
+      symbol: symbol.output ? (symbol.output.isOk ? symbol.output.asOk.toHuman() : symbol.output.toHuman()) : null,
+      decimals: decimals.output ? (decimals.output.isOk ? decimals.output.asOk.toNumber() : decimals.output.toNumber()) : 18,
+      totalSupply: totalSupply.output ? (totalSupply.output.isOk ? totalSupply.output.asOk.toString() : totalSupply.output.toString()) : '0',
     };
   }
 
@@ -223,7 +246,12 @@ class GemSDK {
   async nftMint(contractAddress, signer, to, uri) {
     const contract = this.contracts.belinft || this.loadContract('belinft', contractAddress);
 
-    const { gasRequired } = await contract.query.mint(signer.address, { gasLimit: -1 }, to, uri);
+    const { gasRequired } = await contract.query.mint(
+      signer.address,
+      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null },
+      to,
+      uri
+    );
 
     const tx = await contract.tx.mint({ gasLimit: gasRequired }, to, uri);
 
@@ -249,9 +277,13 @@ class GemSDK {
   async nftOwnerOf(contractAddress, tokenId) {
     const contract = this.contracts.belinft || this.loadContract('belinft', contractAddress);
 
-    const { output } = await contract.query.ownerOf(contract.address, { gasLimit: -1 }, tokenId);
+    const { output } = await contract.query.ownerOf(
+      contract.address,
+      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null },
+      tokenId
+    );
 
-    return output.toString();
+    return output ? output.toString() : null;
   }
 
   /**
@@ -263,9 +295,13 @@ class GemSDK {
   async nftTokenUri(contractAddress, tokenId) {
     const contract = this.contracts.belinft || this.loadContract('belinft', contractAddress);
 
-    const { output } = await contract.query.tokenUri(contract.address, { gasLimit: -1 }, tokenId);
+    const { output } = await contract.query.tokenUri(
+      contract.address,
+      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null },
+      tokenId
+    );
 
-    return output.toString();
+    return output ? output.toString() : null;
   }
 
   // ============================================
@@ -284,7 +320,7 @@ class GemSDK {
 
     const { gasRequired, output } = await contract.query.createProposal(
       signer.address,
-      { gasLimit: -1 },
+      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null },
       description
     );
 
@@ -294,7 +330,7 @@ class GemSDK {
       tx.signAndSend(signer, (result) => {
         if (result.status.isFinalized) {
           console.log(`✅ Proposal created: ${result.status.asFinalized.toString()}`);
-          resolve(output.toNumber());
+          resolve(output ? output.toNumber() : 1);
         }
         if (result.isError) {
           reject(new Error('Create proposal failed'));
@@ -316,7 +352,7 @@ class GemSDK {
 
     const { gasRequired } = await contract.query.vote(
       signer.address,
-      { gasLimit: -1 },
+      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null },
       proposalId,
       support
     );
@@ -347,11 +383,11 @@ class GemSDK {
 
     const { output } = await contract.query.getProposal(
       contract.address,
-      { gasLimit: -1 },
+      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null },
       proposalId
     );
 
-    const proposal = output.toHuman();
+    const proposal = output ? output.toHuman() : null;
     return proposal;
   }
 
@@ -368,7 +404,10 @@ class GemSDK {
   async faucetClaim(contractAddress, signer) {
     const contract = this.contracts.faucet || this.loadContract('faucet', contractAddress);
 
-    const { gasRequired } = await contract.query.claim(signer.address, { gasLimit: -1 });
+    const { gasRequired } = await contract.query.claim(
+      signer.address,
+      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null }
+    );
 
     const tx = await contract.tx.claim({ gasLimit: gasRequired });
 
@@ -394,9 +433,13 @@ class GemSDK {
   async faucetCanClaim(contractAddress, account) {
     const contract = this.contracts.faucet || this.loadContract('faucet', contractAddress);
 
-    const { output } = await contract.query.canClaim(account, { gasLimit: -1 }, account);
+    const { output } = await contract.query.canClaim(
+      account,
+      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null },
+      account
+    );
 
-    return output.toHuman();
+    return output ? output.toHuman() : null;
   }
 
   /**
@@ -407,9 +450,12 @@ class GemSDK {
   async faucetStats(contractAddress) {
     const contract = this.contracts.faucet || this.loadContract('faucet', contractAddress);
 
-    const { output } = await contract.query.stats(contract.address, { gasLimit: -1 });
+    const { output } = await contract.query.stats(
+      contract.address,
+      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null }
+    );
 
-    return output.toHuman();
+    return output ? output.toHuman() : null;
   }
 }
 
