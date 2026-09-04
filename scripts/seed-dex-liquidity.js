@@ -11,7 +11,10 @@ const path = require('path');
 async function main() {
   console.log('🚀 Starting BelizeX DEX Liquidity Seeding & Testnet Setup...');
 
-  const wsUrl = process.env.BLOCKCHAIN_WS_URL || 'wss://100.81.45.25/ws';
+  const { cryptoWaitReady } = require('@polkadot/util-crypto');
+  await cryptoWaitReady();
+
+  const wsUrl = process.env.BLOCKCHAIN_WS_URL || process.env.BELIZECHAIN_NODE_URL || 'ws://localhost:9944';
   const provider = new WsProvider(wsUrl, 5000);
   const api = await ApiPromise.create({ provider });
 
@@ -63,25 +66,49 @@ async function main() {
     proofSize: BigInt(800_000)
   });
 
+  async function sendTxWithUnsub(tx, signer, label, onInBlock) {
+    return new Promise(async (resolve, reject) => {
+      let unsub;
+      let resolved = false;
+      try {
+        unsub = await tx.signAndSend(signer, async ({ status, events, dispatchError }) => {
+          if (resolved) return;
+          if (dispatchError) {
+            resolved = true;
+            if (unsub) unsub();
+            return reject(new Error(`[${label}] DispatchError: ${dispatchError.toString()}`));
+          }
+          if (status.isInBlock) {
+            resolved = true;
+            let res = status.asInBlock.toHex();
+            if (onInBlock) {
+              res = await onInBlock(status.asInBlock.toHex(), events);
+            }
+            if (unsub) unsub();
+            resolve(res);
+          }
+        });
+      } catch (err) {
+        if (unsub) unsub();
+        reject(err);
+      }
+    });
+  }
+
   if (!bbzdAddress) {
     console.log('\n📦 Deploying Belize Digital Dollar (BBZD) test token for trading pair...');
     const bbzdCode = new CodePromise(api, dallaAbi, dallaAbi.source.wasm);
     const bbzdDeployTx = bbzdCode.tx.new({ gasLimit, storageDepositLimit: null }, '1000000000000000000'); // 1M BBZD
 
-    bbzdAddress = await new Promise((resolve, reject) => {
-      bbzdDeployTx.signAndSend(alice, async ({ status, contract, dispatchError }) => {
-        if (dispatchError) return reject(new Error(dispatchError.toString()));
-        if (status.isInBlock) {
-          const blockHash = status.asInBlock.toHex();
-          const blockEvents = await api.query.system.events.at(blockHash);
-          for (const { event } of blockEvents) {
-            if (event.section === 'contracts' && event.method === 'Instantiated') {
-              const addr = event.data[1]?.toString() || event.data.contract?.toString();
-              if (addr) return resolve(addr);
-            }
-          }
+    bbzdAddress = await sendTxWithUnsub(bbzdDeployTx, alice, 'Deploy BBZD', async (blockHash) => {
+      const blockEvents = await api.query.system.events.at(blockHash);
+      for (const { event } of blockEvents) {
+        if (event.section === 'contracts' && event.method === 'Instantiated') {
+          const addr = event.data[1]?.toString() || event.data.contract?.toString();
+          if (addr) return addr;
         }
-      });
+      }
+      throw new Error('Instantiated event not found for BBZD');
     });
     console.log(`✅ BBZD Token deployed at: ${bbzdAddress}`);
   } else {
@@ -99,12 +126,7 @@ async function main() {
     '100000000000000000', // 100,000 DALLA
     []
   );
-  await new Promise((resolve, reject) => {
-    fundFaucetTx.signAndSend(alice, ({ status, dispatchError }) => {
-      if (dispatchError) return reject(new Error(dispatchError.toString()));
-      if (status.isInBlock) resolve();
-    });
-  });
+  await sendTxWithUnsub(fundFaucetTx, alice, 'Fund Faucet');
   console.log('✅ Faucet funded with 100,000 DALLA');
 
   // 2. Create DALLA / BBZD Pair on BelizeX Factory
@@ -115,21 +137,21 @@ async function main() {
     dallaAddress,
     bbzdAddress
   );
-  const pairAddress = await new Promise((resolve, reject) => {
-    createPairTx.signAndSend(alice, async ({ status, dispatchError }) => {
-      if (dispatchError) return reject(new Error(dispatchError.toString()));
-      if (status.isInBlock) {
-        const blockHash = status.asInBlock.toHex();
-        const blockEvents = await api.query.system.events.at(blockHash);
-        for (const { event } of blockEvents) {
-          if (event.section === 'contracts' && event.method === 'Instantiated') {
-            const addr = event.data[1]?.toString() || event.data.contract?.toString();
-            if (addr) return resolve(addr);
-          }
-        }
-        resolve('Pair Created');
+  let pairAddress = await sendTxWithUnsub(createPairTx, alice, 'Create Pair', async (blockHash) => {
+    const blockEvents = await api.query.system.events.at(blockHash);
+    for (const { event } of blockEvents) {
+      if (event.section === 'contracts' && event.method === 'Instantiated') {
+        const addr = event.data[1]?.toString() || event.data.contract?.toString();
+        if (addr) return addr;
       }
-    });
+    }
+    // Fallback query get_pair on factory
+    const getPairFn = factoryContract.query.getPair || factoryContract.query.get_pair;
+    if (getPairFn) {
+      const q = await getPairFn(alice.address, { gasLimit }, dallaAddress, bbzdAddress);
+      if (q.output) return q.output.toString();
+    }
+    return 'Pair Created';
   });
   console.log(`✅ Liquidity Pair Created! (${pairAddress})`);
 
@@ -144,24 +166,14 @@ async function main() {
     routerAddress,
     approveAmount
   );
-  await new Promise((resolve, reject) => {
-    approveDallaTx.signAndSend(alice, ({ status, dispatchError }) => {
-      if (dispatchError) return reject(new Error(dispatchError.toString()));
-      if (status.isInBlock) resolve();
-    });
-  });
+  await sendTxWithUnsub(approveDallaTx, alice, 'Approve DALLA');
 
   const approveBbzdTx = approveBbzdFn(
     { gasLimit, storageDepositLimit: null },
     routerAddress,
     approveAmount
   );
-  await new Promise((resolve, reject) => {
-    approveBbzdTx.signAndSend(alice, ({ status, dispatchError }) => {
-      if (dispatchError) return reject(new Error(dispatchError.toString()));
-      if (status.isInBlock) resolve();
-    });
-  });
+  await sendTxWithUnsub(approveBbzdTx, alice, 'Approve BBZD');
   console.log('✅ Router approvals granted for DALLA and BBZD');
 
   // 4. Add Initial Liquidity: 50,000 DALLA + 100,000 BBZD ($1 DALLA = $2 BBZD test peg)
@@ -179,18 +191,12 @@ async function main() {
     Math.floor(Date.now() / 1000) + 3600 // 1 hour deadline
   );
 
-  await new Promise((resolve, reject) => {
-    addLiqTx.signAndSend(alice, ({ status, dispatchError }) => {
-      if (dispatchError) {
-        console.warn('   Add liquidity note:', dispatchError.toString());
-        resolve();
-      }
-      if (status.isInBlock) {
-        console.log('✅ Initial Liquidity successfully added to BelizeX pool!');
-        resolve();
-      }
-    });
-  });
+  try {
+    await sendTxWithUnsub(addLiqTx, alice, 'Add Liquidity');
+    console.log('✅ Initial Liquidity successfully added to BelizeX pool!');
+  } catch (e) {
+    console.warn('   Add liquidity note:', e.message);
+  }
 
   // Save BBZD and Pair info into deployment record
   latestDeployment.contracts.bbzd = { address: bbzdAddress, name: 'Belize Digital Dollar (BBZD)' };

@@ -149,6 +149,9 @@ class Deployer {
   async setupAccount() {
     console.log(`🔑 Setting up account: ${this.accountUri}`);
 
+    const { cryptoWaitReady } = require('@polkadot/util-crypto');
+    await cryptoWaitReady();
+
     const keyring = new Keyring({ type: 'sr25519' });
     this.signer = keyring.addFromUri(this.accountUri, {}, 'sr25519');
 
@@ -235,75 +238,84 @@ class Deployer {
         ...(config.value ? { value: config.value } : {})
       }, ...args);
 
-      return new Promise((resolve, reject) => {
+      return new Promise(async (resolve, reject) => {
         let resolved = false;
-        tx.signAndSend(this.signer, async ({ status, contract, events, dispatchError }) => {
-          if (resolved) return;
+        let unsub;
+        try {
+          unsub = await tx.signAndSend(this.signer, async ({ status, contract, events, dispatchError }) => {
+            if (resolved) return;
 
-          if (dispatchError) {
-            if (dispatchError.isModule) {
-              const decoded = this.api.registry.findMetaError(dispatchError.asModule);
-              const { docs, name, section } = decoded;
-              console.error(`❌ Error: ${section}.${name}: ${docs.join(' ')}`);
-            } else {
-              console.error(`❌ Error: ${dispatchError.toString()}`);
-            }
-            resolved = true;
-            reject(new Error('Deployment failed'));
-          } else if (status.isInBlock) {
-            // Resolve on InBlock — GRANDPA finality may lag on single-node dev chains
-            const blockHash = status.asInBlock.toHex();
-            console.log(`   ⏳ Included in block: ${blockHash}`);
+            if (dispatchError) {
+              if (dispatchError.isModule) {
+                const decoded = this.api.registry.findMetaError(dispatchError.asModule);
+                const { docs, name, section } = decoded;
+                console.error(`❌ Error: ${section}.${name}: ${docs.join(' ')}`);
+              } else {
+                console.error(`❌ Error: ${dispatchError.toString()}`);
+              }
+              resolved = true;
+              if (unsub) unsub();
+              reject(new Error('Deployment failed'));
+            } else if (status.isInBlock) {
+              // Resolve on InBlock — GRANDPA finality may lag on single-node dev chains
+              const blockHash = status.asInBlock.toHex();
+              console.log(`   ⏳ Included in block: ${blockHash}`);
 
-            let address = null;
-            let codeHash = null;
+              let address = null;
+              let codeHash = null;
 
-            if (contract) {
-              address = contract.address.toString();
-              codeHash = contract.codeHash.toHex();
-            } else {
-              // Query system events at the block — more reliable than callback events
-              // when extrinsic VEC decoding fails
-              try {
-                const blockEvents = await this.api.query.system.events.at(blockHash);
-                for (const record of blockEvents) {
-                  const { event } = record;
-                  if (event.section === 'contracts' && event.method === 'Instantiated') {
-                    address = event.data[1]?.toString() || event.data.contract?.toString();
-                    console.log(`   📎 Found address from block events: ${address}`);
+              if (contract) {
+                address = contract.address.toString();
+                codeHash = contract.codeHash.toHex();
+              } else {
+                // Query system events at the block — more reliable than callback events
+                // when extrinsic VEC decoding fails
+                try {
+                  const blockEvents = await this.api.query.system.events.at(blockHash);
+                  for (const record of blockEvents) {
+                    const { event } = record;
+                    if (event.section === 'contracts' && event.method === 'Instantiated') {
+                      address = event.data[1]?.toString() || event.data.contract?.toString();
+                      console.log(`   📎 Found address from block events: ${address}`);
+                    }
+                    if (event.section === 'contracts' && event.method === 'CodeStored') {
+                      codeHash = event.data[0]?.toHex() || event.data.codeHash?.toHex();
+                    }
                   }
-                  if (event.section === 'contracts' && event.method === 'CodeStored') {
-                    codeHash = event.data[0]?.toHex() || event.data.codeHash?.toHex();
-                  }
+                } catch (e) {
+                  console.log(`   ⚠️  Could not query block events: ${e.message}`);
                 }
-              } catch (e) {
-                console.log(`   ⚠️  Could not query block events: ${e.message}`);
+              }
+
+              if (address) {
+                console.log(`   ✅ Deployed at: ${address}`);
+                if (codeHash) console.log(`   📋 Code hash: ${codeHash}`);
+                this.deployedAddresses[contractKey] = address;
+              } else {
+                console.log(`   ⚠️  Contract included in block but address not found in events`);
+              }
+
+              resolved = true;
+              if (unsub) unsub();
+              resolve({ address, codeHash, blockHash });
+            } else if (status.isFinalized) {
+              if (contract && !resolved) {
+                console.log(`   ✅ Finalized at: ${contract.address.toString()}`);
+                this.deployedAddresses[contractKey] = contract.address.toString();
+                resolved = true;
+                if (unsub) unsub();
+                resolve({
+                  address: contract.address.toString(),
+                  codeHash: contract.codeHash.toHex(),
+                  blockHash: status.asFinalized.toHex()
+                });
               }
             }
-
-            if (address) {
-              console.log(`   ✅ Deployed at: ${address}`);
-              if (codeHash) console.log(`   📋 Code hash: ${codeHash}`);
-              this.deployedAddresses[contractKey] = address;
-            } else {
-              console.log(`   ⚠️  Contract included in block but address not found in events`);
-            }
-
-            resolved = true;
-            resolve({ address, codeHash, blockHash });
-          } else if (status.isFinalized) {
-            if (contract && !resolved) {
-              console.log(`   ✅ Finalized at: ${contract.address.toString()}`);
-              this.deployedAddresses[contractKey] = contract.address.toString();
-              resolved = true;
-              resolve({
-                address: contract.address.toString(),
-                codeHash: contract.codeHash.toHex(),
-                blockHash: status.asFinalized.toHex()
-              });
-            }
-          }
-        });
+          });
+        } catch (err) {
+          if (unsub) unsub();
+          reject(err);
+        }
       });
     } catch (error) {
       console.error(`❌ Deployment error: ${error.message}`);
@@ -326,52 +338,61 @@ class Deployer {
       console.error('❌ WASM not found in pair contract file');
       return null;
     }
-    // pallet-contracts uploadCode(code, storageDepositLimit, determinism)
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       let resolved = false;
-      const tx = this.api.tx.contracts.uploadCode(wasm, null, 'Enforced');
-      tx.signAndSend(this.signer, async ({ status, events, dispatchError }) => {
-        if (resolved) return;
-        if (dispatchError) {
-          if (dispatchError.isModule) {
-            const decoded = this.api.registry.findMetaError(dispatchError.asModule);
-            const { docs, name, section } = decoded;
-            console.error(`❌ Error: ${section}.${name}: ${docs.join(' ')}`);
-          } else {
-            console.error(`❌ Error: ${dispatchError.toString()}`);
-          }
-          resolved = true;
-          reject(new Error('Pair code upload failed'));
-          return;
-        }
-        if (status.isInBlock) {
-          let codeHash = null;
-          for (const { event } of events) {
-            if (event.section === 'contracts' && event.method === 'CodeStored') {
-              codeHash = event.data[0]?.toHex();
-              break;
-            }
-          }
-          if (codeHash) {
-            console.log(`   ✅ Pair code uploaded: ${codeHash}`);
-            this.deployedAddresses.dex_pair_code_hash = codeHash;
-            resolved = true;
-            resolve({ codeHash });
-          } else {
-            // Code may already exist on-chain — derive hash from artifact metadata as fallback
-            const fallback = contractData.source?.hash;
-            if (fallback) {
-              console.log(`   ⚠️  CodeStored event not found; using artifact hash: ${fallback}`);
-              this.deployedAddresses.dex_pair_code_hash = fallback;
-              resolved = true;
-              resolve({ codeHash: fallback });
+      let unsub;
+      try {
+        const tx = this.api.tx.contracts.uploadCode(wasm, null, 'Enforced');
+        unsub = await tx.signAndSend(this.signer, async ({ status, events, dispatchError }) => {
+          if (resolved) return;
+          if (dispatchError) {
+            if (dispatchError.isModule) {
+              const decoded = this.api.registry.findMetaError(dispatchError.asModule);
+              const { docs, name, section } = decoded;
+              console.error(`❌ Error: ${section}.${name}: ${docs.join(' ')}`);
             } else {
+              console.error(`❌ Error: ${dispatchError.toString()}`);
+            }
+            resolved = true;
+            if (unsub) unsub();
+            reject(new Error('Pair code upload failed'));
+            return;
+          }
+          if (status.isInBlock) {
+            let codeHash = null;
+            for (const { event } of events) {
+              if (event.section === 'contracts' && event.method === 'CodeStored') {
+                codeHash = event.data[0]?.toHex();
+                break;
+              }
+            }
+            if (codeHash) {
+              console.log(`   ✅ Pair code uploaded: ${codeHash}`);
+              this.deployedAddresses.dex_pair_code_hash = codeHash;
               resolved = true;
-              reject(new Error('Pair code upload succeeded but code hash not found'));
+              if (unsub) unsub();
+              resolve({ codeHash });
+            } else {
+              // Code may already exist on-chain — derive hash from artifact metadata as fallback
+              const fallback = contractData.source?.hash;
+              if (fallback) {
+                console.log(`   ⚠️  CodeStored event not found; using artifact hash: ${fallback}`);
+                this.deployedAddresses.dex_pair_code_hash = fallback;
+                resolved = true;
+                if (unsub) unsub();
+                resolve({ codeHash: fallback });
+              } else {
+                resolved = true;
+                if (unsub) unsub();
+                reject(new Error('Pair code upload succeeded but code hash not found'));
+              }
             }
           }
-        }
-      }).catch(reject);
+        });
+      } catch (err) {
+        if (unsub) unsub();
+        reject(err);
+      }
     });
   }
 

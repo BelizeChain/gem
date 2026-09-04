@@ -24,7 +24,7 @@ async function runE2ETests() {
   console.log('🧪 BELIZECHAIN LIVE TESTNET END-TO-END VERIFICATION SUITE');
   console.log('═══════════════════════════════════════════════════════════════════════');
 
-  const wsUrl = process.env.BLOCKCHAIN_WS_URL || 'wss://100.81.45.25/ws';
+  const wsUrl = process.env.BLOCKCHAIN_WS_URL || process.env.BELIZECHAIN_NODE_URL || 'ws://localhost:9944';
   const provider = new WsProvider(wsUrl, 5000);
   const api = await ApiPromise.create({ provider });
 
@@ -68,6 +68,31 @@ async function runE2ETests() {
   const nftContract = new ContractPromise(api, nftAbi, contracts.belinft.address);
   const daoContract = new ContractPromise(api, daoAbi, contracts.dao.address);
 
+  async function sendTxWithUnsub(tx, signer, label) {
+    return new Promise(async (resolve, reject) => {
+      let unsub;
+      let resolved = false;
+      try {
+        unsub = await tx.signAndSend(signer, ({ status, dispatchError }) => {
+          if (resolved) return;
+          if (dispatchError) {
+            resolved = true;
+            if (unsub) unsub();
+            return reject(new Error(`[${label}] DispatchError: ${dispatchError.toString()}`));
+          }
+          if (status.isInBlock) {
+            resolved = true;
+            if (unsub) unsub();
+            resolve(status.asInBlock.toHex());
+          }
+        });
+      } catch (err) {
+        if (unsub) unsub();
+        reject(err);
+      }
+    });
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // TEST 1: Generate Maya Wallet User & Gas Funding
   // ──────────────────────────────────────────────────────────────────────────
@@ -79,12 +104,7 @@ async function runE2ETests() {
   console.log(`👤 Generated Maya Wallet Account: ${testUser.address}`);
 
   const fundGasTx = api.tx.balances.transferKeepAlive(testUser.address, 100_000_000_000_000n); // 100 units
-  await new Promise((resolve, reject) => {
-    fundGasTx.signAndSend(alice, ({ status, dispatchError }) => {
-      if (dispatchError) return reject(new Error(dispatchError.toString()));
-      if (status.isInBlock) resolve();
-    });
-  });
+  await sendTxWithUnsub(fundGasTx, alice, 'Fund Gas');
   console.log('✅ Account funded with native gas balance for extrinsics');
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -98,18 +118,12 @@ async function runE2ETests() {
   const claimFn = faucetContract.tx.claim;
   const claimTx = claimFn({ gasLimit, storageDepositLimit: null });
 
-  await new Promise((resolve, reject) => {
-    claimTx.signAndSend(testUser, ({ status, dispatchError }) => {
-      if (dispatchError) {
-        console.warn('   Faucet claim note/status:', dispatchError.toString());
-        resolve();
-      }
-      if (status.isInBlock) {
-        console.log('✅ Faucet claim extrinsic executed successfully');
-        resolve();
-      }
-    });
-  });
+  try {
+    await sendTxWithUnsub(claimTx, testUser, 'Faucet Claim');
+    console.log('✅ Faucet claim extrinsic executed successfully');
+  } catch (err) {
+    console.warn('   Faucet claim note/status:', err.message);
+  }
 
   // Check testUser DALLA balance
   const balanceQuery = dallaContract.query.balanceOf || dallaContract.query['psp22::balance_of'];
@@ -123,7 +137,7 @@ async function runE2ETests() {
     '5000000000000000', // 5,000 DALLA
     []
   );
-  await new Promise((res) => sendDallaTx.signAndSend(alice, ({ status }) => status.isInBlock && res()));
+  await sendTxWithUnsub(sendDallaTx, alice, 'Transfer DALLA to User');
 
   // ──────────────────────────────────────────────────────────────────────────
   // TEST 3: BelizeID DID Registration (pallet-belize-identity)
@@ -142,14 +156,8 @@ async function runE2ETests() {
         biometricCommitment,
         1 // Tier 1: Verified Citizen
       );
-      await new Promise((resolve) => {
-        idTx.signAndSend(testUser, ({ status }) => {
-          if (status.isInBlock) {
-            console.log('✅ BelizeID DID registered on-chain for Maya Wallet user');
-            resolve();
-          }
-        });
-      });
+      await sendTxWithUnsub(idTx, testUser, 'Register Identity');
+      console.log('✅ BelizeID DID registered on-chain for Maya Wallet user');
     } else {
       console.log('ℹ️ Identity registration verified via custom pallet interface');
     }
@@ -172,14 +180,8 @@ async function runE2ETests() {
         10000,               // 10,000 sq meters
         0                    // Freehold
       );
-      await new Promise((resolve) => {
-        parcelTx.signAndSend(alice, ({ status }) => {
-          if (status.isInBlock) {
-            console.log('✅ Land Parcel BZ-CYO-2026-0042 recorded in LandLedger');
-            resolve();
-          }
-        });
-      });
+      await sendTxWithUnsub(parcelTx, alice, 'Register Parcel');
+      console.log('✅ Land Parcel BZ-CYO-2026-0042 recorded in LandLedger');
     } else {
       console.log('ℹ️ LandLedger pallet verified in runtime');
     }
@@ -201,7 +203,7 @@ async function runE2ETests() {
     contracts.dex_router.address,
     '100000000000000' // 100 DALLA
   );
-  await new Promise((res) => approveTx.signAndSend(testUser, ({ status }) => status.isInBlock && res()));
+  await sendTxWithUnsub(approveTx, testUser, 'Approve Router');
   console.log('✅ Test User approved BelizeX Router for swap');
 
   // Execute Swap: 10 DALLA for min 1 BBZD
@@ -215,18 +217,12 @@ async function runE2ETests() {
     Math.floor(Date.now() / 1000) + 3600
   );
 
-  await new Promise((resolve) => {
-    swapTx.signAndSend(testUser, ({ status, dispatchError }) => {
-      if (dispatchError) {
-        console.log('   Swap status response:', dispatchError.toString());
-        resolve();
-      }
-      if (status.isInBlock) {
-        console.log('✅ Swap transaction executed and confirmed on-chain in block!');
-        resolve();
-      }
-    });
-  });
+  try {
+    await sendTxWithUnsub(swapTx, testUser, 'Swap Tokens');
+    console.log('✅ Swap transaction executed and confirmed on-chain in block!');
+  } catch (err) {
+    console.log('   Swap status response:', err.message);
+  }
 
   // ──────────────────────────────────────────────────────────────────────────
   // TEST 6: BeliNFT Minting & Ownership Query (beli_nft)
@@ -242,18 +238,12 @@ async function runE2ETests() {
     1 // Token ID #1
   );
 
-  await new Promise((resolve) => {
-    mintTx.signAndSend(alice, ({ status, dispatchError }) => {
-      if (dispatchError) {
-        console.log('   NFT Mint status:', dispatchError.toString());
-        resolve();
-      }
-      if (status.isInBlock) {
-        console.log('✅ BeliNFT Token ID #1 minted to Maya Wallet user');
-        resolve();
-      }
-    });
-  });
+  try {
+    await sendTxWithUnsub(mintTx, alice, 'Mint NFT');
+    console.log('✅ BeliNFT Token ID #1 minted to Maya Wallet user');
+  } catch (err) {
+    console.log('   NFT Mint status:', err.message);
+  }
 
   // ──────────────────────────────────────────────────────────────────────────
   // TEST 7: Simple DAO Governance Proposal & Voting
@@ -270,18 +260,12 @@ async function runE2ETests() {
       alice.address,
       0 // No value transfer
     );
-    await new Promise((resolve) => {
-      propTx.signAndSend(alice, ({ status, dispatchError }) => {
-        if (dispatchError) {
-          console.log('   DAO Proposal status:', dispatchError.toString());
-          resolve();
-        }
-        if (status.isInBlock) {
-          console.log('✅ DAO Governance Proposal created and recorded in smart contract');
-          resolve();
-        }
-      });
-    });
+    try {
+      await sendTxWithUnsub(propTx, alice, 'DAO Proposal');
+      console.log('✅ DAO Governance Proposal created and recorded in smart contract');
+    } catch (err) {
+      console.log('   DAO Proposal status:', err.message);
+    }
   }
 
   console.log('\n═══════════════════════════════════════════════════════════════════════');
