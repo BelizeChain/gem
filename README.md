@@ -3,6 +3,8 @@
 > **Production-grade smart contract ecosystem for BelizeChain**  
 > ink! 5.1.1 | Substrate Contracts | DeFi Primitives
 
+> ⚠️ Docs truthfulness audit 2026-09-10: "production-ready" below applies to the **design intent**. `docs/audits/AUDIT-GEM-05` documents PSP37 architectural non-conformance, and other audit docs list open CRITICAL/HIGH findings — do not cite these contracts as audit-clean until `docs/audits/COMMIT-READINESS-SUMMARY.md` reflects a clean re-audit. Deployed-on-Ceiba status is dated 2026-05-02 (see `docs/guides/CEIBA_DEPLOY_HANDOFF.md`).
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![ink! 5.1.1](https://img.shields.io/badge/ink!-5.1.1-blue)](https://use.ink/)
 [![BelizeChain](https://img.shields.io/badge/BelizeChain-v0.2.0--alpha-brightgreen)](https://github.com/BelizeChain/belizechain)
