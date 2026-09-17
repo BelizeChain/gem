@@ -45,3 +45,6 @@ coverage/
 .env
 .env.local
 .env.*.local
+
+# Deployment manifests — keep active at root, archive history
+deployment/archive/
