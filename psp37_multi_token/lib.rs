@@ -777,6 +777,13 @@ mod psp37_multi_token {
                 return Ok(());
             }
 
+            // GEM-05-I03 (fixed): self-transfer is a guaranteed no-op — the
+            // read-modify-write logic below balances out, but only after
+            // burning gas and emitting a misleading Transfer event.
+            if from == to {
+                return Ok(());
+            }
+
             // Validate addresses
             if to == AccountId::from([0u8; 32]) {
                 return Err(Error::ZeroAddress);
@@ -843,6 +850,11 @@ mod psp37_multi_token {
             token_ids: Vec<TokenId>,
             values: Vec<Balance>,
         ) -> Result<()> {
+            // GEM-05-I03 (fixed): self-transfer batch is a guaranteed no-op set
+            if from == to {
+                return Ok(());
+            }
+
             // Validate inputs
             if token_ids.len() != values.len() {
                 return Err(Error::ArrayLengthMismatch);
@@ -1054,6 +1066,27 @@ mod psp37_multi_token {
             let contract = Psp37MultiToken::new();
             assert_eq!(contract.next_token_id, 1);
             assert_eq!(contract.pending_owner, None);
+        }
+
+        // ====================================================================
+        // GEM-05-I03: Self-Transfer Is a No-Op (fixed)
+        // ====================================================================
+
+        #[ink::test]
+        fn self_transfer_is_silent_no_op() {
+            let mut contract = Psp37MultiToken::new();
+            let accounts = default_accounts();
+
+            let token_id = contract
+                .create_token(TokenType::Fungible, 500, None, None)
+                .unwrap();
+
+            contract
+                .transfer(accounts.alice, token_id, 100)
+                .expect("self-transfer should be an explicit Ok no-op");
+
+            assert_eq!(contract.balance_of(accounts.alice, token_id), 500);
+            assert_eq!(contract.total_supply(token_id), 500);
         }
 
         // ====================================================================

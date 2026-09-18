@@ -909,7 +909,7 @@ All 19 findings from the initial audit have been addressed. The contract now pas
 | GEM-05-L04 | next_token_id overflow wraps | **FIXED** | Uses `checked_add` with `Error::TokenIdOverflow` |
 | GEM-05-I01 | No PSP37Enumerable extension | **DEFERRED** | Enhancement — not a security issue |
 | GEM-05-I02 | No batch_burn function | **DEFERRED** | Enhancement — not a security issue |
-| GEM-05-I03 | Self-transfer not optimized | **DEFERRED** | Enhancement — not a security issue |
+| GEM-05-I03 | Self-transfer not optimized | **FIXED (2026-09-17)** | Early-return `if from == to` in `_transfer_from` and `_batch_transfer_from`; in-unit test added (contract gas + event noise eliminated). Not a deployed-change; next runtime upgrade window picks it up. |
 | GEM-05-I04 | No receiver hooks (onPSP37Received) | **DEFERRED** | Requires cross-contract call infrastructure |
 
 ### Test Coverage
@@ -934,5 +934,5 @@ All 19 findings from the initial audit have been addressed. The contract now pas
 
 ### Gate Decision
 
-- **AUDIT-GEM-05: PASS** (with L03 and I01–I04 deferred)
+- **AUDIT-GEM-05: PASS** (L03, I01, I02, I04 remain deferred by design — not security issues; I03 fixed with test on 2026-09-17)
 - **Next action**: Proceed to WASM build (`cargo contract build --release`) and integration testing.
