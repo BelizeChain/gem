@@ -41,7 +41,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.90.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           targets: wasm32-unknown-unknown
           components: rustfmt, clippy
@@ -101,7 +101,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.90.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           targets: wasm32-unknown-unknown
 
@@ -200,7 +200,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.90.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           targets: wasm32-unknown-unknown
 
@@ -232,7 +232,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.90.0
+        uses: dtolnay/rust-toolchain@1.120.0
 
       - name: Download contract artifacts
         uses: actions/download-artifact@v4
