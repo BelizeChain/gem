@@ -224,10 +224,26 @@ class GemSDK {
     ]);
 
     return {
-      name: name.output ? (name.output.isOk ? name.output.asOk.toHuman() : name.output.toHuman()) : null,
-      symbol: symbol.output ? (symbol.output.isOk ? symbol.output.asOk.toHuman() : symbol.output.toHuman()) : null,
-      decimals: decimals.output ? (decimals.output.isOk ? decimals.output.asOk.toNumber() : decimals.output.toNumber()) : 18,
-      totalSupply: totalSupply.output ? (totalSupply.output.isOk ? totalSupply.output.asOk.toString() : totalSupply.output.toString()) : '0',
+      name: name.output
+        ? name.output.isOk
+          ? name.output.asOk.toHuman()
+          : name.output.toHuman()
+        : null,
+      symbol: symbol.output
+        ? symbol.output.isOk
+          ? symbol.output.asOk.toHuman()
+          : symbol.output.toHuman()
+        : null,
+      decimals: decimals.output
+        ? decimals.output.isOk
+          ? decimals.output.asOk.toNumber()
+          : decimals.output.toNumber()
+        : 18,
+      totalSupply: totalSupply.output
+        ? totalSupply.output.isOk
+          ? totalSupply.output.asOk.toString()
+          : totalSupply.output.toString()
+        : '0',
     };
   }
 
@@ -404,10 +420,10 @@ class GemSDK {
   async faucetClaim(contractAddress, signer) {
     const contract = this.contracts.faucet || this.loadContract('faucet', contractAddress);
 
-    const { gasRequired } = await contract.query.claim(
-      signer.address,
-      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null }
-    );
+    const { gasRequired } = await contract.query.claim(signer.address, {
+      gasLimit: this.getDefaultGasLimit(),
+      storageDepositLimit: null,
+    });
 
     const tx = await contract.tx.claim({ gasLimit: gasRequired });
 
@@ -450,10 +466,10 @@ class GemSDK {
   async faucetStats(contractAddress) {
     const contract = this.contracts.faucet || this.loadContract('faucet', contractAddress);
 
-    const { output } = await contract.query.stats(
-      contract.address,
-      { gasLimit: this.getDefaultGasLimit(), storageDepositLimit: null }
-    );
+    const { output } = await contract.query.stats(contract.address, {
+      gasLimit: this.getDefaultGasLimit(),
+      storageDepositLimit: null,
+    });
 
     return output ? output.toHuman() : null;
   }
