@@ -10,6 +10,12 @@ on:
     branches: [ main, develop ]
     paths:
       - 'sdk/**'
+      # Without this line a PR that edits THIS workflow cannot validate itself. The push
+      # trigger above already covers sdk.yml, but pull_request did not, so a change here
+      # only ran after merge - which defeats the point of the PR check. Confirmed live on
+      # dependabot#8 (setup-node 4 -> 7): it touched only this file, so the PR ran GEM
+      # Contracts CI and nothing else, leaving every setup-node bump in here untested.
+      - '.github/workflows/sdk.yml'
   workflow_dispatch:
 
 jobs:
